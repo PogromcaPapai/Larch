@@ -1,6 +1,6 @@
 import unittest as test
 from importlib import import_module
-from logicninja import pop_engine
+from app import pop_engine
 example1 = import_module('.example1','tests')
 
 class Test_GenerateFuncDataStructure(test.TestCase):
@@ -25,7 +25,6 @@ class Test_GenerateFuncDataStructure(test.TestCase):
         obj = pop_engine.gen_functionDS('', int, str, int, list, tuple)
         self.assertEqual(obj, ('', ((str, int, list, tuple), int)))
 
-    
 class TestFunctionFit(test.TestCase):
 
     def setUp(self):
@@ -37,7 +36,7 @@ class TestFunctionFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', funcs)
+        self.socket = pop_engine.Socket('test', "", "", funcs)
 
     def test_addition(self):
         self.assertTrue(self.socket._functionfit(example1.add))
@@ -59,10 +58,75 @@ class TestFunctionFit(test.TestCase):
         with self.assertRaises(pop_engine.FunctionInterfaceError):
             self.socket._functionfit(example1.sub_wrongout)
 
-# class TestSocketFit(test.TestCase):
+class TestSocketFit(test.TestCase):
 
-#     def test_good_import(self):
-        
+    def test_good_import(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('random', int),
+            pop_engine.gen_functionDS('str_int_none', None, str, int)
+        ))
+        socket = pop_engine.Socket('test', "", "", funcs)
+        self.assertTrue(socket.fits(example1))
+
+    def test_wrong_arg(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('sub_wrongin', int, int, int),
+            pop_engine.gen_functionDS('random', int),
+            pop_engine.gen_functionDS('str_int_none', None, str, int)
+        ))
+        self.socket = pop_engine.Socket('test', "", "", funcs)
+        with self.assertRaises(pop_engine.FunctionInterfaceError):
+            self.socket.fits(example1)
+
+    def test_wrong_return(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('sub_wrongout', int, int, int),
+            pop_engine.gen_functionDS('random', int),
+            pop_engine.gen_functionDS('str_int_none', None, str, int)
+        ))
+        self.socket = pop_engine.Socket('test', "", "", funcs)
+        with self.assertRaises(pop_engine.FunctionInterfaceError):
+            self.socket.fits(example1)
+
+    def test_lack_function(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('addstring', str, str, str),
+            pop_engine.gen_functionDS('sub_wrongout', int, int, int),
+            pop_engine.gen_functionDS('random', int),
+            pop_engine.gen_functionDS('str_int_none', None, str, int)
+        ))
+        self.socket = pop_engine.Socket('test', "", "", funcs)
+        with self.assertRaises(pop_engine.LackOfFunctionsError):
+            self.socket.fits(example1)
+    
+    def test_changed_names(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('ger', int, int, int),
+            pop_engine.gen_functionDS('fe', int, int, int),
+        ))
+        self.socket = pop_engine.Socket('test', "", "", funcs)
+        with self.assertRaises(pop_engine.LackOfFunctionsError):
+            self.socket.fits(example1)
+
+class TestPlugging(test.TestCase):
+    
+    def setUp(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+        ))
+        self.socket = pop_engine.Socket('test', "tests\example_project", "0.0", funcs)
+    
+    def test_good_import(self):
+        pass
 
 if __name__ == "__main__":
     test.main()
