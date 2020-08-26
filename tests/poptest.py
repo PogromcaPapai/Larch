@@ -140,7 +140,7 @@ class TestPlugging(test.TestCase):
         ))
         self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0", funcs)
         self.socket.plug("example2")
-        self.assertTrue(self.socket()!=None)
+        self.assertTrue(self.socket().__name__=='example2')
 
     def test_plugin_change(self):
         funcs = dict((
@@ -150,7 +150,7 @@ class TestPlugging(test.TestCase):
         self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0", funcs)
         self.socket.plug("example2")
         self.socket.plug("example2_")
-        self.assertTrue(self.socket().__name__!="example2")
+        self.assertTrue(self.socket().__name__=="example2_")
 
     def test_plugin_doesnt_exist(self):
         funcs = dict((
