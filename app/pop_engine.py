@@ -1,6 +1,7 @@
-import importlib
+import importlib, importlib.util
 import inspect
 import typing as tp
+import os
 
 Module = type(tp)
 
@@ -17,12 +18,16 @@ class Socket(object):
 
     # Magic
 
-    def __init__(self, socket_name: str, directory: str, version: str, functions: tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]):
+    def __init__(self, socket_name: str, abs_path: str, version: str, functions: tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]):
+        if abs_path != "<> test <>":
+            assert os.path.isabs(abs_path), "Path not absolute"
+            if not os.path.exists(abs_path):
+                os.mkdir(abs_path)
+        self.dir = abs_path
         self.name = socket_name
         self.functions = functions
         self.func_names = functions.keys()
-        self.dir = directory
-        self.plug = None
+        self.plugin = None
         self.version = version
 
     def __call__(self):
@@ -36,15 +41,33 @@ class Socket(object):
     def generate_template(self, plugin_name: str) -> None:
         pass
 
-    def discover(self) -> tp.List[str]:
-        pass
+    def find_plugins(self) -> tp.List[str]:
+        return [file[:-3] for file in os.listdir(self.dir) if (file.endswith(".py") and file != "__init__.py")]
 
     def unplug(self) -> None:
         self.plug = None
 
-    def plug(self, module_name: str) -> None:
-        # TODO: napisać to xD
-        self.discover()
+    def plug(self, plugin_name: str) -> None:
+        assert self.dir!="<> test <>"
+        if plugin_name.endswith(".py"):
+            plugin_name = plugin_name[:-3]
+        if not plugin_name in self.find_plugins():
+            raise FileNotFoundError(f"{plugin_name} doesn't exist in {self.dir}")
+        plug_obj = self._import(plugin_name)
+
+        if plug_obj.SOCKET != self.name:
+            raise PluginError(f"{plug_obj.__name__} is meant to be plugged into {plug_obj.SOCKET}, not {self.name}")
+        self.fits(plug_obj)
+        self.check_verion(plug_obj)
+        
+        self.plugin = plug_obj
+
+
+    def _import(self, name: str) -> Module:
+        spec = importlib.util.spec_from_file_location(name, f"{self.dir}/{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
 
     # Verification
 
