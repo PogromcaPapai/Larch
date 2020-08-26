@@ -39,7 +39,7 @@ class TestFunctionFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "", funcs)
+        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
 
     def test_addition(self):
         self.assertTrue(self.socket._functionfit(example1.add))
@@ -70,7 +70,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "", funcs)
+        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
         self.assertTrue(self.socket.fits(example1))
 
     def test_wrong_arg(self):
@@ -81,7 +81,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "", funcs)
+        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.FunctionInterfaceError):
             self.socket.fits(example1)
 
@@ -93,7 +93,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "", funcs)
+        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.FunctionInterfaceError):
             self.socket.fits(example1)
 
@@ -106,7 +106,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "", funcs)
+        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.LackOfFunctionsError):
             self.socket.fits(example1)
     
@@ -115,7 +115,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('ger', int, int, int),
             pop_engine.gen_functionDS('fe', int, int, int),
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "", funcs)
+        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.LackOfFunctionsError):
             self.socket.fits(example1)
 
@@ -126,9 +126,9 @@ class TestFindPlugin(test.TestCase):
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, int)
         ))
-        self.socket = pop_engine.Socket('test', exampleproject_path, "0.0", funcs)
+        self.socket = pop_engine.Socket('test', exampleproject_path, "0.0.0", funcs)
         tested = self.socket.find_plugins()
-        self.assertSetEqual(set(tested), {'example2', 'example2_'}) 
+        self.assertSetEqual(set(tested), {'example2', 'example2_', 'example_compatible', 'example_wrong_ver_for'}) 
         
 
 class TestPlugging(test.TestCase):
@@ -138,16 +138,25 @@ class TestPlugging(test.TestCase):
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, int),
         ))
-        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
         self.socket.plug("example2")
         self.assertTrue(self.socket().__name__=='example2')
+
+    def test_partial_compatibility(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+        ))
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
+        self.socket.plug("example_compatible")
+        self.assertTrue(self.socket().__name__=='example_compatible')
 
     def test_plugin_change(self):
         funcs = dict((
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, int),
         ))
-        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
         self.socket.plug("example2")
         self.socket.plug("example2_")
         self.assertTrue(self.socket().__name__=="example2_")
@@ -157,7 +166,7 @@ class TestPlugging(test.TestCase):
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, int),
         ))
-        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
         with self.assertRaises(FileNotFoundError):
             self.socket.plug("does_not_exist")
 
@@ -167,7 +176,7 @@ class TestPlugging(test.TestCase):
             pop_engine.gen_functionDS('sub', int, int, int),
             pop_engine.gen_functionDS('does_not_exist', None)
         ))
-        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
         with self.assertRaises(pop_engine.LackOfFunctionsError):
             self.socket.plug("example2")
 
@@ -176,7 +185,7 @@ class TestPlugging(test.TestCase):
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, str)
         ))
-        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
         with self.assertRaises(pop_engine.FunctionInterfaceError):
             self.socket.plug("example2")
 
@@ -185,16 +194,25 @@ class TestPlugging(test.TestCase):
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, int)
         ))
-        self.socket = pop_engine.Socket('example_project', exampleproject_path, "1.0", funcs)
-        with self.assertRaises(pop_engine.PluginError):
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "1.0.0", funcs)
+        with self.assertRaises(pop_engine.VersionError):
             self.socket.plug("example2")
+
+    def test_wrong_version_format(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int)
+        ))
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
+        with self.assertRaises(SyntaxError):
+            self.socket.plug("example_wrong_ver_for")
 
     def test_wrong_folder(self):
         funcs = dict((
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, int)
         ))
-        self.socket = pop_engine.Socket('another_test', exampleproject_path, "0.0", funcs)
+        self.socket = pop_engine.Socket('another_test', exampleproject_path, "0.0.0", funcs)
         with self.assertRaises(pop_engine.PluginError):
             self.socket.plug("example2")
 

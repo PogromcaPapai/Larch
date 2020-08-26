@@ -1,4 +1,5 @@
-import importlib, importlib.util
+import importlib
+import importlib.util
 import inspect
 import typing as tp
 import os
@@ -18,19 +19,45 @@ class Socket(object):
 
     # Magic
 
-    def __init__(self, socket_name: str, abs_path: str, version: str, functions: tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]):
+    def __init__(self, socket_name: str, abs_path: str, version: str, functions: tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]], plugged: str = ""):
+        """Allows the user to smoothly interchange plugins by providing the interface call functions
+
+        Args:
+            socket_name (str): Name given to the socket, will be used to identify plugins
+            abs_path (str): Absolute path to the directory with plugins; use `<> test <>` for testing
+            version (str): Version of the socket, will be checked with sockets. Supported format: "x.x.z", changes on "z level" will be omitted in version checking
+            functions (tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]): Used as a reference in interface verification, `gen_functionDS` generates these
+            plugged (str, optional): Name of a plugin which will be connected. Defaults to "".
+        """
+        # Plugin's directory
         if abs_path != "<> test <>":
             assert os.path.isabs(abs_path), "Path not absolute"
             if not os.path.exists(abs_path):
                 os.mkdir(abs_path)
         self.dir = abs_path
+
+        # Version checking
+        self.version = [int(i) for i in version.split('.')]
+        assert len(self.version) == 3, "Wrong version format"
+
+        # Misc
         self.name = socket_name
         self.functions = functions
         self.func_names = functions.keys()
-        self.plugin = None
-        self.version = version
+        if plugged == "":
+            self.plugin = None
+        else:
+            self.plug(plugged)
 
-    def __call__(self):
+    def __call__(self) -> Module:
+        """Use this to get access to the plugin
+
+        Raises:
+            PluginError: Raised if nothing is plugged in
+
+        Returns:
+            Module: Plugged module
+        """
         if self.plug:
             return self.plugin
         else:
@@ -42,44 +69,84 @@ class Socket(object):
         pass
 
     def find_plugins(self) -> tp.List[str]:
+        """
+        Returns:
+            tp.List[str]: List of all plugins in the socket's directory
+        """
         return [file[:-3] for file in os.listdir(self.dir) if (file.endswith(".py") and file != "__init__.py")]
 
     def unplug(self) -> None:
+        """Unplugs the current plugin, not recommended"""
         self.plug = None
 
     def plug(self, plugin_name: str) -> None:
-        assert self.dir!="<> test <>"
+        """Connects the plugin to the socket
+
+        Args:
+            plugin_name (str): Name of the plugin
+
+        Raises:
+            FileNotFoundError: Raised if module with this name does not exist
+            PluginError: Wrong socket
+            VersionError: Wrong plugin version
+            FunctionInterfaceError: Socket doesn't allow this function interface
+            LackOfFunctionsError: Module lacks a function needed to connect to the socket
+        """
+        # Retrieval
+        assert self.dir != "<> test <>"
         if plugin_name.endswith(".py"):
             plugin_name = plugin_name[:-3]
         if not plugin_name in self.find_plugins():
-            raise FileNotFoundError(f"{plugin_name} doesn't exist in {self.dir}")
+            raise FileNotFoundError(
+                f"{plugin_name} doesn't exist in {self.dir}")
         plug_obj = self._import(plugin_name)
 
+        # Verification
         if plug_obj.SOCKET != self.name:
-            raise PluginError(f"{plug_obj.__name__} is meant to be plugged into {plug_obj.SOCKET}, not {self.name}")
+            raise PluginError(
+                f"{plug_obj.__name__} is meant to be plugged into {plug_obj.SOCKET}, not {self.name}")
         self.fits(plug_obj)
-        self.check_verion(plug_obj)
-        
+        self.check_version(plug_obj)
+
+        # Connecting to the system
         self.plugin = plug_obj
 
-
     def _import(self, name: str) -> Module:
-        spec = importlib.util.spec_from_file_location(name, f"{self.dir}/{name}.py")
+        """Imports a module of the given name and returns it; USE PLUG INSTEAD"""
+        spec = importlib.util.spec_from_file_location(
+            name, f"{self.dir}/{name}.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
 
     # Verification
 
-    def check_verion(self, plugin: Module) -> bool:
-        # TODO: Czy dodawać częściową kompatybilność?
-        if self.version == plugin.VERSION:
+    def check_version(self, plugin: Module) -> bool:
+        """Checks plugin versions. Supported format: "x.x.z", changes on "z level" will be omitted in version checking
+
+        Raises:
+            VersionError: Wrong plugin version
+            SyntaxError: Wrong version formatting in the plugin
+        """
+        plugin_ver = [int(i) for i in plugin.VERSION.split(".")]
+        if len(plugin_ver) != 3:
+            raise SyntaxError("Wrong version format used in the plugin")
+        if plugin_ver[:-1] == self.version[:-1]:
             return True
         else:
-            raise PluginError(
-                f"Wrong version - Socket: {self.version}; Plugin: {plugin.VERSION}")
+            raise VersionError(
+                f'Wrong version - Socket: {".".join((str(i) for i in self.version))}; Plugin: {plugin.VERSION}')
 
     def fits(self, plugin: Module) -> bool:
+        """Function checks if module is connectable to the socket
+
+        Args:
+            plugin (Module)
+
+        Raises:
+            FunctionInterfaceError: Socket doesn't allow this function interface
+            LackOfFunctionsError: Module lacks a function needed to connect to the socket
+        """
         set_names = set(self.func_names)
         set_plugin = set(dir(plugin))
         if not set_names.issubset(set_plugin):
@@ -91,14 +158,23 @@ class Socket(object):
         return True
 
     def _functionfit(self, func: tp.Callable) -> bool:
+        """Checks compatibility of the function's interface
+
+        Raises:
+            FunctionInterfaceError: Socket doesn't allow this function interface - wrong type of arguments/returned value.
+        """
         if self.functions.get(func.__name__, None) == None:
             return True
         sig = inspect.signature(func)
         args = tuple(
             [sig.parameters[j].annotation for j in sig.parameters.keys()])
         proper = self.functions[func.__name__]
+        
+        # Argument checking
         if args != proper[0]:
             raise FunctionInterfaceError(True, self, func, args)
+        
+        # Return checking
         elif sig.return_annotation != proper[1]:
             raise FunctionInterfaceError(
                 False, self, func, sig.return_annotation)
@@ -135,3 +211,7 @@ class FunctionInterfaceError(PluginError):
             info = f"{func.__name__} can't be connected to {socket.name}; " + \
                 f"Return is: {str(what_is)}, should be: {str(socket.functions[func.__name__][1])}"
         super().__init__(info)
+
+class VersionError(PluginError):
+    """Raised if plugin has an incompatible version"""
+    pass
