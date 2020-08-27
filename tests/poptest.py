@@ -188,6 +188,16 @@ class TestMisc(test.TestCase):
         tested = os.path.isfile(f"{exampleproject_path}/test_plugin.py")
         os.remove(f"{exampleproject_path}/test_plugin.py")
         self.assertTrue(tested)
+
+    def test_create_plugin_already_exists(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('a', None)
+        ))
+        socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", 'example2.py')
+        with self.assertRaises(FileExistsError):
+            socket.generate_template('example2.py')
         
         
 
