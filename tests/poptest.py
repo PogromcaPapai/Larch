@@ -28,6 +28,53 @@ class Test_GenerateFuncDataStructure(test.TestCase):
         obj = pop_engine.gen_functionDS('', int, str, int, list, tuple)
         self.assertEqual(obj, ('', ((str, int, list, tuple), int)))
 
+class Test_GetFuncFromTemplate(test.TestCase):
+    
+    def test_withpy(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('a', None)
+        ))
+        socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", 'example2.py')
+        self.assertEqual(socket.functions, funcs)
+        
+    def test_withoutpy(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('a', None)
+        ))
+        socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", 'example2')
+        self.assertEqual(socket.functions, funcs)
+
+    def test_wrong_version(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('a', None)
+        ))
+        with self.assertRaises(pop_engine.VersionError):
+            socket = pop_engine.Socket('example_project', exampleproject_path, "1.0.0", 'example2.py')
+
+    def test_wrong_folder(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('a', None)
+        ))
+        with self.assertRaises(pop_engine.VersionError):
+            socket = pop_engine.Socket('another_test', exampleproject_path, "1.0.0", 'example2.py')
+
+    def test_no_file(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('a', None)
+        ))
+        with self.assertRaises(FileNotFoundError):
+            socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", 'not_here')
+
 class TestFunctionFit(test.TestCase):
 
     def setUp(self):
@@ -39,7 +86,7 @@ class TestFunctionFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', "<> test <>", "0.0.0", funcs)
 
     def test_addition(self):
         self.assertTrue(self.socket._functionfit(example1.add))
@@ -70,7 +117,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', "<> test <>", "0.0.0", funcs)
         self.assertTrue(self.socket.fits(example1))
 
     def test_wrong_arg(self):
@@ -81,7 +128,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.FunctionInterfaceError):
             self.socket.fits(example1)
 
@@ -93,7 +140,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.FunctionInterfaceError):
             self.socket.fits(example1)
 
@@ -106,7 +153,7 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('random', int),
             pop_engine.gen_functionDS('str_int_none', None, str, int)
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.LackOfFunctionsError):
             self.socket.fits(example1)
     
@@ -115,20 +162,33 @@ class TestSocketFit(test.TestCase):
             pop_engine.gen_functionDS('ger', int, int, int),
             pop_engine.gen_functionDS('fe', int, int, int),
         ))
-        self.socket = pop_engine.Socket('test', "<> test <>", "0.0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', "<> test <>", "0.0.0", funcs)
         with self.assertRaises(pop_engine.LackOfFunctionsError):
             self.socket.fits(example1)
 
-class TestFindPlugin(test.TestCase):
+class TestMisc(test.TestCase):
 
-    def test_basic(self):
+    def test_find_plugin(self):
         funcs = dict((
             pop_engine.gen_functionDS('add', int, int, int),
             pop_engine.gen_functionDS('sub', int, int, int)
         ))
-        self.socket = pop_engine.Socket('test', exampleproject_path, "0.0.0", funcs)
+        self.socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", funcs)
         tested = self.socket.find_plugins()
         self.assertSetEqual(set(tested), {'example2', 'example2_', 'example_compatible', 'example_wrong_ver_for'}) 
+
+    def test_create_plugin(self):
+        funcs = dict((
+            pop_engine.gen_functionDS('add', int, int, int),
+            pop_engine.gen_functionDS('sub', int, int, int),
+            pop_engine.gen_functionDS('a', None)
+        ))
+        socket = pop_engine.Socket('example_project', exampleproject_path, "0.0.0", 'example2.py')
+        socket.generate_template('test_plugin')
+        tested = os.path.isfile(f"{exampleproject_path}/test_plugin.py")
+        os.remove(f"{exampleproject_path}/test_plugin.py")
+        self.assertTrue(tested)
+        
         
 
 class TestPlugging(test.TestCase):
