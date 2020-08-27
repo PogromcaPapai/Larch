@@ -1,6 +1,7 @@
 import importlib
 import importlib.util
-import inspect, shutil
+import inspect
+import shutil
 import typing as tp
 import os
 
@@ -48,7 +49,8 @@ class Socket(object):
             if template.endswith(".py"):
                 template = template[:-3]
             if not os.path.isfile(f"{abs_path}/{template}.py"):
-                raise FileNotFoundError(f"{template}.py doesn't exist in {abs_path}")
+                raise FileNotFoundError(
+                    f"{template}.py doesn't exist in {abs_path}")
             else:
                 self.template = template
                 self.functions = self._get_functions_from_template(template)
@@ -81,9 +83,11 @@ class Socket(object):
         if plugin_name.endswith(".py"):
             plugin_name = plugin_name[:-3]
         if plugin_name in self.find_plugins():
-            raise FileExistsError(f"{plugin_name} already exists in {self.name}'s directory")
+            raise FileExistsError(
+                f"{plugin_name} already exists in {self.name}'s directory")
         if self.template:
-            shutil.copyfile(f"{self.dir}/{self.template}.py", f"{self.dir}/{plugin_name}.py")
+            shutil.copyfile(f"{self.dir}/{self.template}.py",
+                            f"{self.dir}/{plugin_name}.py")
         else:
             raise FileNotFoundError(
                 f"There is no template available for {self.name}'s plugins")
@@ -122,8 +126,10 @@ class Socket(object):
         plug_obj = self._import(plugin_name)
 
         # Verification
-        self.check_name(plug_obj, f"{plug_obj.__name__} is meant to be plugged into {plug_obj.SOCKET}, not {self.name}")
-        self.check_version(plug_obj, f'Wrong version - Socket: {".".join((str(i) for i in self.version))}; Plugin: {plug_obj.VERSION}')
+        self.check_name(
+            plug_obj, f"{plug_obj.__name__} is meant to be plugged into {plug_obj.SOCKET}, not {self.name}")
+        self.check_version(
+            plug_obj, f'Wrong version - Socket: {".".join((str(i) for i in self.version))}; Plugin: {plug_obj.VERSION}')
         self.fits(plug_obj)
 
         # Connecting to the system
@@ -159,7 +165,7 @@ class Socket(object):
             return True
         else:
             raise VersionError(message)
-            
+
     def fits(self, plugin: Module) -> bool:
         """Function checks if module is connectable to the socket
 
@@ -207,14 +213,17 @@ class Socket(object):
     def _get_functions_from_template(self, template_file_name: str) -> tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]:
         # Verification
         template = self._import(template_file_name)
-        self.check_version(template, f"Version of {template.__name__} not compatible with {self.name}")
-        self.check_name(template, f"{template.__name__} can be a socket of {template.SOCKET}, not {self.name}")  
-        
+        self.check_version(
+            template, f"Version of {template.__name__} not compatible with {self.name}")
+        self.check_name(
+            template, f"{template.__name__} can be a socket of {template.SOCKET}, not {self.name}")
+
         # Template reading
         funcs = dict()
         for i in inspect.getmembers(template, callable):
             sig = inspect.signature(i[1])
-            args = tuple([sig.parameters[j].annotation for j in sig.parameters.keys()])
+            args = tuple(
+                [sig.parameters[j].annotation for j in sig.parameters.keys()])
             funcs[i[0]] = (args, inspect.signature(i[1]).return_annotation)
         return funcs
 
