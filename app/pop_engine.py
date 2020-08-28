@@ -146,6 +146,7 @@ class Socket(object):
     # Verification
 
     def check_name(self, plugin: Module, message: str) -> bool:
+        assert 'SOCKET' in dir(plugin), "No socket name in the plugin"
         if plugin.SOCKET != self.name:
             raise PluginError(message)
         else:
@@ -158,6 +159,7 @@ class Socket(object):
             VersionError: Wrong plugin version
             SyntaxError: Wrong version formatting in the plugin
         """
+        assert 'VERSION' in dir(plugin), "No plugin version in the plugin"
         plugin_ver = [int(i) for i in plugin.VERSION.split(".")]
         if len(plugin_ver) != 3:
             raise SyntaxError("Wrong version format used in the plugin")
