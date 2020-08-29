@@ -48,7 +48,7 @@ class Socket(object):
         if isinstance(template, str):
             if template.endswith(".py"):
                 template = template[:-3]
-            if not os.path.isfile(f"{abs_path}/{template}.py"):
+            if not os.path.isfile(f"{abs_path}\\{template}.py"):
                 raise FileNotFoundError(
                     f"{template}.py doesn't exist in {abs_path}")
             else:
