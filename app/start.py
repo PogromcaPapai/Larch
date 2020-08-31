@@ -1,13 +1,16 @@
-import pop_engine as pop
 import os
 import json
 import sys
 
-UI = pop.Socket('UserInterface', os.path.abspath('app/UserInterface'), '0.0.1', '__template__')
+import pop_engine as pop
 
 if __name__ == "__main__":
+    UI = pop.Socket('UserInterface', os.path.abspath('UserInterface'), '0.0.1', '__template__')
+
     exit_code = -1
     while exit_code==-1:
-        UI.plug('__template__')
+        with open('config.json', 'r') as file:
+            config = json.load(file)
+        UI.plug(config['chosen_plugins']['UserInterface'])
         exit_code = UI().run()
-    sys.exit(exit_code)
+        input()

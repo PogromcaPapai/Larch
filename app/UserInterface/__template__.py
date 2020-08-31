@@ -5,13 +5,7 @@ import importlib
 import os
 import sys
 
-# main.py import
-# pls help im trapped in __import__'s documentation and i don't understand anything
-spec = importlib.util.spec_from_file_location('engine', os.path.abspath('app/engine.py'))
-engine = importlib.util.module_from_spec(spec)
-sys.modules['engine'] = engine
-spec.loader.exec_module(engine)
-del spec
+import engine
 
 def run() -> int:
     """

@@ -7,7 +7,6 @@ import os
 
 Module = type(tp)
 
-
 def gen_functionDS(func_name: str, returns: tp.Any, *args: tp.Any) -> tp.Tuple[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]:
     return (func_name, (args, returns))
 
