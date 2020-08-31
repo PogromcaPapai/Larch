@@ -1,11 +1,15 @@
 import importlib
 import importlib.util
 import inspect
+import logging
+import os
 import shutil
 import typing as tp
-import os
 
 Module = type(tp)
+
+logger = logging.getLogger('pop')
+
 
 def gen_functionDS(func_name: str, returns: tp.Any, *args: tp.Any) -> tp.Tuple[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]:
     return (func_name, (args, returns))
@@ -96,10 +100,13 @@ class Socket(object):
         Returns:
             tp.List[str]: List of all plugins in the socket's directory
         """
-        return [file[:-3] for file in os.listdir(self.dir) if (file.endswith(".py") and not (file in {self.template, "__init__.py"}))]
+        plugs = [file[:-3] for file in os.listdir(self.dir) if (
+            file.endswith(".py") and not (file in {self.template, "__init__.py"}))]
+        return plugs
 
     def unplug(self) -> None:
         """Unplugs the current plugin, not recommended"""
+        logger.warning(f"{self().__name__} disconnected from {self.name}")
         self.plug = None
 
     def plug(self, plugin_name: str) -> None:
@@ -120,18 +127,21 @@ class Socket(object):
         if plugin_name.endswith(".py"):
             plugin_name = plugin_name[:-3]
         if not plugin_name in self.find_plugins():
+            logger.error(f"{plugin_name} doesn't exist in {self.dir}")
             raise FileNotFoundError(
                 f"{plugin_name} doesn't exist in {self.dir}")
+        logger.info(f"Importing {plugin_name}")
         plug_obj = self._import(plugin_name)
 
         # Verification
         self.check_name(
-            plug_obj, f"{plug_obj.__name__} is meant to be plugged into {plug_obj.SOCKET}, not {self.name}")
+            plug_obj, f"{plugin_name} is meant to be plugged into {plug_obj.SOCKET}, not {self.name}")
         self.check_version(
             plug_obj, f'Wrong version - Socket: {".".join((str(i) for i in self.version))}; Plugin: {plug_obj.VERSION}')
         self.fits(plug_obj)
 
         # Connecting to the system
+        logger.warning(f"{plugin_name} connected to {self.name}")
         self.plugin = plug_obj
 
     def _import(self, name: str) -> Module:
@@ -149,6 +159,7 @@ class Socket(object):
         if plugin.SOCKET != self.name:
             raise PluginError(message)
         else:
+            logger.debug(f"Checked socket")
             return True
 
     def check_version(self, plugin: Module, message: str) -> bool:
@@ -161,8 +172,12 @@ class Socket(object):
         assert 'VERSION' in dir(plugin), "No plugin version in the plugin"
         plugin_ver = [int(i) for i in plugin.VERSION.split(".")]
         if len(plugin_ver) != 3:
-            raise SyntaxError("Wrong version format used in the plugin")
+            logger.error(
+                f"Wrong version format in the plugin: {str(plugin.VERSION)}")
+            raise SyntaxError(
+                f"Wrong version format used in the plugin: {str(plugin.VERSION)}")
         if plugin_ver[:-1] == self.version[:-1]:
+            logger.debug(f"Checked version")
             return True
         else:
             raise VersionError(message)
@@ -210,6 +225,7 @@ class Socket(object):
                 False, self, func, sig.return_annotation)
         else:
             return True
+            logger.debug(f"{func.__name__} compatible")
 
     def _get_functions_from_template(self, template_file_name: str) -> tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]:
         # Verification
@@ -235,6 +251,10 @@ class Socket(object):
 
 class PluginError(Exception):
     """Mother of exceptions used to deal with plugin problems"""
+
+    def __init__(self, msg):
+        logger.error(msg)
+        super().__init__(msg)
 
 
 class LackOfFunctionsError(PluginError):
