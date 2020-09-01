@@ -1,21 +1,24 @@
+import example1
+import engine
+from UserInterface import cmd
 import unittest as test
 from importlib import import_module
 import os
 import sys
 
 sys.path.append('../app/')
-from UserInterface import cmd
-import example1
+
 
 class TestParser(test.TestCase):
-    
+
     def setUp(self):
         self.dict = {
-            'addition negative':{'comm':example1.sub, 'args':[int, int], 'add_docs':''},
-            'addition':{'comm':example1.add, 'args':[int, int], 'add_docs':''},
-            'str_int':{'comm':example1.str_int_none, 'args':[str, int], 'add_docs':''},
-            'random':{'comm':example1.random, 'args':[], 'add_docs':''}
+            'addition negative': {'comm': example1.sub, 'args': [int, int], 'add_docs': ''},
+            'addition': {'comm': example1.add, 'args': [int, int], 'add_docs': ''},
+            'str_int': {'comm': example1.str_int_none, 'args': [str, int], 'add_docs': ''},
+            'random': {'comm': example1.random, 'args': [], 'add_docs': ''}
         }
+        self.session = engine.Session()
 
     def test_proper(self):
         parsed = cmd.parser('addition 1 2', _dict=self.dict)
@@ -44,6 +47,7 @@ class TestParser(test.TestCase):
     def test_func_notfound(self):
         with self.assertRaises(cmd.ParsingError):
             cmd.parser('doesntexist 1', _dict=self.dict)
+
 
 if __name__ == "__main__":
     test.main()

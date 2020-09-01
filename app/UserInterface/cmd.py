@@ -1,4 +1,3 @@
-import importlib
 import logging
 import os
 import sys
@@ -73,8 +72,9 @@ def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
         comm.append({'func': func['comm'], 'args': converted})
     return comm
 
+
 @UIlogged
-def performer(command: tp.Dict[str,tp.Any], session: engine.Session) -> str:
+def performer(command: tp.Dict[str, tp.Any], session: engine.Session) -> str:
     if 'docs' in command.keys():
         return f"Help for {command['func'].__name__}: \n\n{command['docs']}"
     else:
@@ -82,64 +82,81 @@ def performer(command: tp.Dict[str,tp.Any], session: engine.Session) -> str:
 
 # Commands
 
+
 def do_clear(session) -> str:
     """Clears the screen, useful when dealing with graphical bugs"""
     ptk.shortcuts.clear()
     return ""
 
-def do_exit(session):
+
+def do_exit(session: engine.Session):
     """Exits the app"""
     logger.info("Exiting the app")
     sys.exit(0)
 
-def do_plug_switch(session, socket_or_name, new) -> str:
+
+def do_plug_switch(session: engine.Session, socket_or_name: str, new: str) -> str:
     """Allows to plug in a script to a socket"""
     try:
         session.plug_switch(socket_or_name, new)
-    except BaseException as e: # TODO: Sprawdzić wyjątki i zrobić to ładniej
+    except BaseException as e:  # TODO: Sprawdzić wyjątki i zrobić to ładniej
         logger.error(f"Exception caught: {e}")
         return f"błąd: {e}"
     else:
         return f"Plugin succesfully installed: {new}"
 
-def do_plug_list(session, socket):
+
+def do_plug_list(session: engine.Session, socket: str) -> str:
     """Lists all the plugins that can be connected to a socket"""
     plugins = "; ".join(session.plug_list(socket))
     return f"Plugins available locally for {socket}:\n{plugins}"
 
+
+def do_plug_list_all(session: engine.Session):
+    """Lists all the plugins that can be connected to a socket"""
+    strings = []
+    for i in session.get_socket_names():
+        plugins = "; ".join(session.plug_list(i))
+        strings.append(f"Plugins available locally for {i}:\n{plugins}")
+    return "\n\n".join(strings)
+
+
 def do_plug_gen(session, socket_or_name, name):
     try:
         session.plug_gen(socket_or_name, name)
-    except BaseException as e: # TODO: Sprawdzić wyjątki i zrobić to ładniej
+    except BaseException as e:  # TODO: Sprawdzić wyjątki i zrobić to ładniej
         logger.error(f"Exception caught: {e}")
         return f"błąd: {e}"
     else:
         return f"Generated plugin {name} from template"
 
+
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy
 command_dict = {
     # Program interaction
     'plugin switch': {'comm': do_plug_switch, 'args': [str, str], 'add_docs': ''},
+    'plugin list all': {'comm': do_plug_list_all, 'args': [], 'add_docs': ''},
     'plugin list': {'comm': do_plug_list, 'args': [str], 'add_docs': ''},
     'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'add_docs': ''},
     'clear': {'comm': do_clear, 'args': [], 'add_docs': ''},
     # Navigation
     'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
-    'leave': {}, # Porzuca nieskończony dowód
+    'leave': {},  # Porzuca nieskończony dowód
     'prove': {},
     'get always': {},
     'get branch': {},
     'get tree': {},
     'jump': {},
-    'next': {}, # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
+    'next': {},  # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
     # Proof manipulation
-    'save': {}, # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
+    'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
     'auto always': {},
     'auto': {},
     'use': {},
 }
 
 # Front-end setup
+
 
 def get_rprompt():
     prompt = 'tutaj\nbędzie\nwyświetlał\nsię dowód\narka\ngdynia\ndodana\nkolejna\nlinia\nmusi\nwyjść\nwięcej\nod\n10'.split(
@@ -157,6 +174,7 @@ def get_toolbar():
     return ptk.HTML('This is a <b><style bg="ansired">Toolbar</style></b>!')
 
 # run
+
 
 def run() -> int:
     """

@@ -1,11 +1,7 @@
+import engine
 SOCKET = 'UserInterface'
 VERSION = '0.0.1'
 
-import importlib
-import os
-import sys
-
-import engine
 
 def run() -> int:
     """
