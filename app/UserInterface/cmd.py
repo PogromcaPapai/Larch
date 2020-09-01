@@ -48,9 +48,12 @@ def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
         if func == None:
             raise ParsingError("Command not found")
         args = command[len(name):].split()
+
+        # Invoking the help command
         if '?' in args or '--help' in args or 'help' in args:
             if func['comm'].__doc__:
-                doc = "\n".join((func['add_docs'], func['comm'].__doc__))
+                doc = "\n".join(
+                    (f"Help for '{name}':", func['add_docs'], func['comm'].__doc__))
             else:
                 doc = func['add_docs']
             comm.append({'func': func['comm'], 'docs': doc})
@@ -76,7 +79,7 @@ def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
 @UIlogged
 def performer(command: tp.Dict[str, tp.Any], session: engine.Session) -> str:
     if 'docs' in command.keys():
-        return f"Help for {command['func'].__name__}: \n\n{command['docs']}"
+        return command['docs']
     else:
         return command['func'](session, *command['args'])
 
