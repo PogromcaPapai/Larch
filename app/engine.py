@@ -6,6 +6,8 @@ import typing as tp
 import pop_engine as pop
 import logging
 
+# Logging config
+
 logger = logging.getLogger('engine')
 
 
@@ -24,10 +26,14 @@ def EngineChangeLog(func, *args, **kwargs):
         return func(*args, **kwargs)
     return new
 
+# Exceptions
 
-def logged(parameter_list):
-    pass
+class EngineError(Exception):
+    def __init__(self, msg: str, *args, **kwargs):
+        logger.error(msg)
+        super().__init__(msg, *args, **kwargs)
 
+# Session
 
 class Session(object):
     ENGINE_VERSION = '0.0.1'
@@ -43,14 +49,43 @@ class Session(object):
     # Plugin manpiulation
 
     @EngineChangeLog
-    def plug_switch(self, socket_or_old: str, new: str):
-        if socket_or_old == 'UserInterface' or socket_or_old == config['chosen_plugins']['UserInterface']:
+    def plug_switch(self, socket_or_old: str, new: str) -> None:
+        if socket_or_old == 'UserInterface' or socket_or_old == self.config['chosen_plugins']['UserInterface']:
             socket_name = 'UserInterface'
         else:
-            if socket_or_old in self.sockets.keys():
-                pass
+            # Socket name searching
+            socket_name = self.sockets.get(socket_or_old, None)
+            if not socket_name:
+                for i in self.config['chosen_plugins'].items():
+                    if i[1] == socket_or_old:
+                        socket_name = i[0] 
+            if not socket_name:
+                raise EngineError(f"Socket/plugin {socket_or_old} not found")
+
+            # Plugging
+            self.sockets[socket_name].plug(new)
+        
+        # Config editing
         self.config['chosen_plugins'][socket_name] = new
         self.write_config()
+
+    def plug_list(self, socket: str) -> list:
+        sock = self.sockets.get(socket, None)
+        if sock is None:
+            if socket=="UserInterface":
+                return [file[:-3] for file in os.listdir("UserInterface") if (
+            file.endswith(".py") and not (file in {"__template__.py", "__init__.py"}))]
+            raise EngineError(f"There is no socket named {socket}")
+        else:
+            return sock.find_plugins()
+
+    def plug_gen(self, socket: str, name: str) -> None:
+        sock = self.sockets.get(socket, None)
+        if sock is None:
+            raise EngineError(f"There is no socket named {socket}")
+        else:
+            sock.generate_template(name)
+        
 
     # config reading and writing
 

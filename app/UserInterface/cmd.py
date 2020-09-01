@@ -14,6 +14,7 @@ VERSION = '0.0.1'
 
 
 # Logging config
+
 logging.basicConfig(filename='log.log', level=logging.DEBUG,
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 logger = logging.getLogger('interface')
@@ -26,13 +27,7 @@ def UIlogged(func, *args, **kwargs):
         return func(*args, **kwargs)
     return new
 
-# Command parsing
-
-
-# command_dict powinien być posortowany od najdłuższej do najkrótszej komendy
-command_dict = {
-    'clear': {'comm': ptk.shortcuts.clear, 'args': [], 'add_docs': ''}
-}
+# Command parsing execution
 
 
 class ParsingError(Exception):
@@ -40,10 +35,11 @@ class ParsingError(Exception):
 
 
 @UIlogged
-def parser(statement: str, _dict: dict = command_dict) -> list:  # Add ?/help handling
+def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
     comm = []
-    for command in statement.split(';'):
+    for command_raw in statement.split(';'):
         # Function parsing
+        command = command_raw.lstrip()
         func = None
         for i in _dict.items():
             if command.startswith(i[0]):
@@ -53,6 +49,13 @@ def parser(statement: str, _dict: dict = command_dict) -> list:  # Add ?/help ha
         if func == None:
             raise ParsingError("Command not found")
         args = command[len(name):].split()
+        if '?' in args or '--help' in args or 'help' in args:
+            if func['comm'].__doc__:
+                doc = "\n".join((func['add_docs'], func['comm'].__doc__))
+            else:
+                doc = func['add_docs']
+            comm.append({'func': func['comm'], 'docs': doc})
+            continue
 
         # Argument conversion
         if len(args) > len(func['args']):
@@ -67,15 +70,74 @@ def parser(statement: str, _dict: dict = command_dict) -> list:  # Add ?/help ha
                 raise TypeError("Wrong argument type")
             converted.append(new)
 
-        # Documentation generating and yielding
-
-        if func['comm'].__doc__:
-            doc = "\n".join((func['add_docs'], func['comm'].__doc__))
-        else:
-            doc = func['add_docs']
-        comm.append({'func': func['comm'], 'args': converted, 'docs': doc})
+        comm.append({'func': func['comm'], 'args': converted})
     return comm
 
+@UIlogged
+def performer(command: tp.Dict[str,tp.Any], session: engine.Session) -> str:
+    if 'docs' in command.keys():
+        return f"Help for {command['func'].__name__}: \n\n{command['docs']}"
+    else:
+        return command['func'](session, *command['args'])
+
+# Commands
+
+def do_clear(session) -> str:
+    """Clears the screen, useful when dealing with graphical bugs"""
+    ptk.shortcuts.clear()
+    return ""
+
+def do_exit(session):
+    """Exits the app"""
+    logger.info("Exiting the app")
+    sys.exit(0)
+
+def do_plug_switch(session, socket_or_name, new) -> str:
+    """Allows to plug in a script to a socket"""
+    try:
+        session.plug_switch(socket_or_name, new)
+    except BaseException as e: # TODO: Sprawdzić wyjątki i zrobić to ładniej
+        logger.error(f"Exception caught: {e}")
+        return f"błąd: {e}"
+    else:
+        return f"Plugin succesfully installed: {new}"
+
+def do_plug_list(session, socket):
+    """Lists all the plugins that can be connected to a socket"""
+    plugins = "; ".join(session.plug_list(socket))
+    return f"Plugins available locally for {socket}:\n{plugins}"
+
+def do_plug_gen(session, socket_or_name, name):
+    try:
+        session.plug_gen(socket_or_name, name)
+    except BaseException as e: # TODO: Sprawdzić wyjątki i zrobić to ładniej
+        logger.error(f"Exception caught: {e}")
+        return f"błąd: {e}"
+    else:
+        return f"Generated plugin {name} from template"
+
+# command_dict powinien być posortowany od najdłuższej do najkrótszej komendy
+command_dict = {
+    # Program interaction
+    'plugin switch': {'comm': do_plug_switch, 'args': [str, str], 'add_docs': ''},
+    'plugin list': {'comm': do_plug_list, 'args': [str], 'add_docs': ''},
+    'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'add_docs': ''},
+    'clear': {'comm': do_clear, 'args': [], 'add_docs': ''},
+    # Navigation
+    'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
+    'leave': {}, # Porzuca nieskończony dowód
+    'prove': {},
+    'get always': {},
+    'get branch': {},
+    'get tree': {},
+    'jump': {},
+    'next': {}, # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
+    # Proof manipulation
+    'save': {}, # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
+    'auto always': {},
+    'auto': {},
+    'use': {},
+}
 
 # Front-end setup
 
@@ -94,6 +156,7 @@ def get_rprompt():
 def get_toolbar():
     return ptk.HTML('This is a <b><style bg="ansired">Toolbar</style></b>!')
 
+# run
 
 def run() -> int:
     """
@@ -114,7 +177,7 @@ def run() -> int:
             logger.debug("Command empty")
             continue
         try:
-            to_perform = parser(command)
+            to_perform = parser(command, command_dict)
         except ParsingError as e:  # TODO: dopisać sensowny handling
             ptk.print_formatted_text(f"błąd: {e}")
             logger.debug(f"Exception caught: {e}")
@@ -125,4 +188,4 @@ def run() -> int:
             continue
 
         for procedure in to_perform:
-            procedure['func'](*procedure['args'])
+            ptk.print_formatted_text(performer(procedure, session))
