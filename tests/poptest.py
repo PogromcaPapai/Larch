@@ -1,10 +1,13 @@
 import unittest as test
 from importlib import import_module
-from app import pop_engine
 import os
-example1 = import_module('.example1', 'tests')
+import sys
 
-exampleproject_path = os.path.abspath('tests\example_project')
+sys.path.append('../app')
+import pop_engine
+import example1
+
+exampleproject_path = os.path.abspath('example_project')
 
 
 class Test_GenerateFuncDataStructure(test.TestCase):
