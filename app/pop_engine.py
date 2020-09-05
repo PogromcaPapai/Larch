@@ -85,12 +85,13 @@ class Socket(object):
     def generate_template(self, plugin_name: str) -> None:
         if plugin_name.endswith(".py"):
             plugin_name = plugin_name[:-3]
-        if plugin_name in self.find_plugins():
-            raise FileExistsError(
-                f"{plugin_name} already exists in {self.name}'s directory")
         if self.template:
-            shutil.copyfile(f"{self.dir}/{self.template}.py",
-                            f"{self.dir}/{plugin_name}.py")
+            try:
+                shutil.copyfile(f"{self.dir}/{self.template}.py",
+                                f"{self.dir}/{plugin_name}.py")
+            except shutil.SameFileError:
+                raise FileExistsError(
+                    f"{plugin_name} already exists in {self.name}'s directory")
         else:
             raise FileNotFoundError(
                 f"There is no template available for {self.name}'s plugins")

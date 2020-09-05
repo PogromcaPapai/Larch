@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import logging as log
 import os
@@ -56,7 +57,7 @@ class Tree(object):
     @EngineLog
     def _gen_name(self) -> tp.Tuple[str]:
         if self.parent:
-            dist = 2*alphabet.index(self.name) - (alphabet.index(self.parent.children()[0].name) - alphabet.index(self.parent.children()[1].name)
+            dist = 2*alphabet.index(self.name) - (alphabet.index(self.parent.children()[0].name) - alphabet.index(self.parent.children()[1].name))
             assert dist != 0
             new=abs(dist)//2
             if dist < 0:
@@ -136,7 +137,7 @@ class Session(object):
 
     # Plugin manpiulation
 
-    @ EngineChangeLog
+    @EngineChangeLog
     def plug_switch(self, socket_or_old: str, new: str) -> None:
         if socket_or_old == 'UserInterface' or socket_or_old == self.config['chosen_plugins']['UserInterface']:
             socket_name='UserInterface'

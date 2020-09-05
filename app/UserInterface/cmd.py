@@ -38,7 +38,7 @@ def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
     comm = []
     for command_raw in statement.split(';'):
         # Function parsing
-        command = command_raw.lstrip()
+        command = command_raw.strip()
         func = None
         for i in _dict.items():
             if command.startswith(i[0]):
@@ -60,17 +60,22 @@ def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
             continue
 
         # Argument conversion
-        if len(args) > len(func['args']):
-            raise ParsingError("Too many arguments")
-        elif len(args) < len(func['args']):
-            raise ParsingError("More arguments needed")
-        converted = []
-        for form, val in zip(func['args'], args):
-            try:
-                new = form(val)
-            except ValueError:
-                raise TypeError("Wrong argument type")
-            converted.append(new)
+        if args == 'multiple_strings':
+            # mechanism for prove
+            converted = command[len(name):].strip()
+        else:
+            # mechanism for other types
+            if len(args) > len(func['args']):
+                raise ParsingError("Too many arguments")
+            elif len(args) < len(func['args']):
+                raise ParsingError("More arguments needed")
+            converted = []
+            for form, val in zip(func['args'], args):
+                try:
+                    new = form(val)
+                except ValueError:
+                    raise TypeError("Wrong argument type")
+                converted.append(new)
 
         comm.append({'func': func['comm'], 'args': converted})
     return comm
@@ -145,7 +150,7 @@ command_dict = {
     # Navigation
     'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
     'leave': {},  # Porzuca nieskończony dowód
-    'prove': {},
+    'prove': {'args': 'multiple_strings'},
     'get always': {},
     'get branch': {},
     'get tree': {},
