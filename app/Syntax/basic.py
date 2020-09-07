@@ -86,8 +86,8 @@ Lexicon = namedtuple(
 
 
 @lru_cache(3)
-def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tuple[str]]):
-    """Filters out patterns that aren't used"""
+def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tuple[str]]) -> Lexicon:
+    """Filters out patterns that aren't used, creates a regex pattern, returns a lexicon object"""
     lack = used_tokens - full_lexicon['types']
     if lack:
         raise CompilerError(
@@ -101,7 +101,7 @@ def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tu
 
     # Check for lexicon fullness
     assert len(filtered_keywords) > 0, "No keywords"
-    #assert any(filtered_var), "No variables"
+    assert any(filtered_var), "No variables" # Turn off for testing
 
     # Check for duplicates
     dup = [i for i in group_by_key(filtered_keywords).items() if len(i[1]) > 1]
@@ -122,13 +122,27 @@ def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tu
 
 
 def find_token(string: str, lex: Lexicon) -> str:
+    """Finds the string in the lexicon and returns it
+
+    :param string: Searched string
+    :type string: str
+    :param lex: Used lexicon object (generate with simplify_lexicon)
+    :type lex: Lexicon
+    :raises CompilerError: Raised if the string can't be properly tokenized
+    :return: <[type]_[string]>
+    :rtype: str
+    """
+    # Check defined
     found = lex.defined.get(string, None)
+    # Check keywords
     if not found:
         found = lex.keywords.get(string, None)
+    # Check variables
     if not found:
         for i in lex.variables:
             if check_range(string, i[0]):
                 found = i[1].replace('+', string)
+    # Raise exception
     if not found:
         raise CompilerError(f'Couldn\'t be tokenized: "{string}"')
     return found
@@ -138,9 +152,6 @@ def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: tp.Dict[str
     dictionary = simplify_lexicon(
         frozenset(used_tokens), frozenset(defined.items()))
     s = statement[:]
-
-    def func(x):
-        return find_token(x.group(), dictionary)
-    s = dictionary.pattern.sub(func, s)
-    # dodać test dla sprawdzania czy istnieje jakieś nieprzekonwertowane gówno
+    s = dictionary.pattern.sub(lambda x: find_token(x.group(), dictionary), s)
+    # TODO: dodać test dla sprawdzania czy istnieje jakieś nieprzekonwertowane gówno
     return s
