@@ -1,6 +1,6 @@
 import typing as tp
-from collections import OrderedDict
-from string import ascii_lowercase, ascii_uppercase
+from collections import namedtuple
+from string import ascii_letters
 from functools import lru_cache
 import re
 from functools import reduce
@@ -13,8 +13,16 @@ class CompilerError(Exception):
     pass
 
 
-lexicon = OrderedDict(
-    constants=sorted((
+class MultipleTypesError(CompilerError):
+
+    def __init__(self, multiple, *args, **kwargs):
+        lists = [" - ".join((i[0], ", ".join(i[1]))) for i in multiple.items()]
+        msg = "\n".join(("Multiple types found for:", *lists))
+        super().__init__(msg, *args, **kwargs)
+
+
+full_lexicon = dict(
+    constants=(
         # AND
         ('^', 'and'),
         ('and', 'and'),
@@ -22,7 +30,7 @@ lexicon = OrderedDict(
         # OR
         ('v', 'or'),
         ('or', 'or'),
-        #('|', 'or'),
+        ('|', 'or'),
         # NEGATION
         ('~', 'not'),
         ('not', 'not'),
@@ -36,52 +44,103 @@ lexicon = OrderedDict(
         ('E', 'exists'),
         ('\\/', 'exists'),
         ('exists', 'exists'),
-    ), key=lambda x: len(x[1]), reverse=True),
-    semantic=(
-        # =, <, > and other things that need to carry semantics
     ),
-    variables=reduce(lambda x,y: x+y,
-        (tuple([(i, 'indvar')
-         for i in ascii_lowercase[20:]]),  # from u and onwards
-        tuple([(i, 'constant') for i in ascii_lowercase]),  # from a and onwards
-        tuple([(i, 'predicate')
-         for i in ascii_uppercase[15:]]),  # from P and onwards
-        tuple([(i, 'function')
-         for i in ascii_uppercase[5:]]),  # from F and onwards
-
+    semantic=(
+        # =, <, > and other things that need to carry semantics in proofs
+    ),
+    variables=(
+        (r'[u-z]', 'indvar'),
+        (r'[a-t]', 'constant'),
+        (r'[P-Z]', 'predicate'),
+        (r'[F-O]', 'function'),
         # Zero order logic
-        tuple([(i, 'sentence')
-         for i in ascii_lowercase[15:]]),  # from p and onwards
-    ), tuple()), #TODO: zoptymalizować to kiedyś
+        (r'[p-z]', 'sentvar'),
+    ),
 )
+full_lexicon['types'] = reduce(lambda x, y: x | y, ((
+    {i[1] for i in value} for value in full_lexicon.values())), set())
 
-@lru_cache(2)
-def simplify_lexicon(*used_tokens: tp.Iterable[str]):
+
+def group_by_key(l) -> tp.Dict[str, tp.List[str]]:
+    allfound = dict()
+    for i in l:
+        if i in allfound.keys():
+            allfound[i[0]].append(i[1])
+        else:
+            allfound[i[0]] = [i[1]]
+    return allfound
+
+
+def letter_range(regex: str) -> tp.Tuple[int]:
+    return (ascii_letters.index(regex[1]), ascii_letters.index(regex[3]))
+
+
+def check_range(letter: str, indexes: tp.Tuple[int]) -> bool:
+    assert len(letter) == 1
+    v = ascii_letters.index(letter)
+    return v >= indexes[0] and v <= indexes[1]
+
+
+Lexicon = namedtuple(
+    'Lexicon', ['pattern', 'defined', 'keywords', 'variables'])
+
+
+@lru_cache(3)
+def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tuple[str]]):
     """Filters out patterns that aren't used"""
-    new = OrderedDict()
-    for i in lexicon.items():
-        filtered = [(j[0], f" <{i[0][0]}_{j[1]}_{j[0]}> ")
-                          for j in filter(lambda x: x[1] in used_tokens, i[1])]
-        dict_filtered = dict(filtered)
-        assert len(filtered) == len(dict_filtered), f"An entry in {i[0]} was overwritten"
-        pattern = re.compile("|".join((re.escape(j[0]) for j in filtered)))
-        new[i[0]] = (pattern, dict_filtered)
-    return new
+    lack = used_tokens - full_lexicon['types']
+    if lack:
+        raise CompilerError(
+            "Lexicon lacks following types: {}".format(", ".join(lack)))
+
+    # Filtering
+    filtered_def = list(filter(lambda x: x[1] in used_tokens, defined))
+    filtered_keywords = list(filter(lambda x: x[1] in used_tokens, full_lexicon['constants'])) + list(
+        filter(lambda x: x[1] in used_tokens, full_lexicon['semantic']))
+    filtered_var = list(filter(lambda x: x[1] in used_tokens, full_lexicon['variables']))
+
+    # Check for lexicon fullness
+    assert len(filtered_keywords) > 0, "No keywords"
+    #assert any(filtered_var), "No variables"
+
+    # Check for duplicates
+    dup = [i for i in group_by_key(filtered_keywords).items() if len(i[1]) > 1]
+    if len(dup) > 0:
+        raise MultipleTypesError(dup)
+    # TODO: Add a check for variables?
+
+    # Prepare data
+    dict_keys = {i[0]: f"<{i[1]}_{i[0]}>" for i in filtered_keywords}
+    dict_def = {i[0]: f"<{i[1]}_{i[0]}>" for i in filtered_def}
+    tup_variables = [(letter_range(i[0]), f"<{i[1]}_+>") for i in filtered_var]
+
+    # Generate pattern
+    in_pattern = [re.escape(i[0]) for i in filtered_def]+[re.escape(i[0]) for i in filtered_keywords] + [i[0] for i in filtered_var]
+    pattern = re.compile("|".join(in_pattern))
+
+    return Lexicon(pattern=pattern, defined=dict_def, keywords=dict_keys, variables=tup_variables)
+
+
+def find_token(string: str, lex: Lexicon) -> str:
+    found = lex.defined.get(string, None)
+    if not found:
+        found = lex.keywords.get(string, None)
+    if not found:
+        for i in lex.variables:
+            if check_range(string, i[0]):
+                found = i[1].replace('+', string)
+    if not found:
+        raise CompilerError(f'Couldn\'t be tokenized: "{string}"')
+    return found
+
 
 def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: tp.Dict[str, str] = dict()) -> str:
-    dictionary = simplify_lexicon(*used_tokens)
-    s = statement
-    subdict = dictionary['constants']
-    if len(subdict[1])>0:
-        func = lambda x: subdict[1][x.group()]
-        s = subdict[0].sub(func, s)
-    const_ready = s.split()
-    subdict = dictionary['variables']
-    for i in range(len(const_ready)):
-        if len(subdict[1])>0 and not '<' in const_ready[i]:
-            func = lambda x: subdict[1][x.group()]
-            const_ready[i] = subdict[0].sub(func, const_ready[i])
-    ready = "".join(const_ready)
-    return ready
+    dictionary = simplify_lexicon(
+        frozenset(used_tokens), frozenset(defined.items()))
+    s = statement[:]
 
-# Działa, ale warto by przeprowadzić refaktoryzację
+    def func(x):
+        return find_token(x.group(), dictionary)
+    s = dictionary.pattern.sub(func, s)
+    # dodać test dla sprawdzania czy istnieje jakieś nieprzekonwertowane gówno
+    return s
