@@ -5,7 +5,7 @@ from functools import lru_cache
 import re
 from functools import reduce
 
-SOCKET = 'Syntax'
+SOCKET = 'Lexicon'
 VERSION = '0.0.1'
 
 
@@ -36,7 +36,7 @@ full_lexicon = dict(
         ('not', 'not'),
         # IMPLICATION
         ('->', 'imp'),
-        ('then', 'imp'),
+        ('imp', 'imp'),
         # QUANTIFICATION
         ('A', 'forall'),
         ('/\\', 'forall'),
@@ -104,10 +104,12 @@ def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tu
     assert any(filtered_var), "No variables" # Turn off for testing
 
     # Check for duplicates
-    dup = [i for i in group_by_key(filtered_keywords).items() if len(i[1]) > 1]
-    if len(dup) > 0:
-        raise MultipleTypesError(dup)
-    # TODO: Add a check for variables?
+    dup_key = [i for i in group_by_key(filtered_keywords).items() if len(i[1]) > 1]
+    if len(dup_key) > 0:
+        raise MultipleTypesError(dup_key)
+    dup_var = [i for i in group_by_key(filtered_keywords).items() if len(i[1]) > 1]
+    if len(dup_var) > 0:
+        raise MultipleTypesError(dup_var)
 
     # Prepare data
     dict_keys = {i[0]: f"<{i[1]}_{i[0]}>" for i in filtered_keywords}
@@ -115,7 +117,7 @@ def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tu
     tup_variables = [(letter_range(i[0]), f"<{i[1]}_+>") for i in filtered_var]
 
     # Generate pattern
-    in_pattern = [re.escape(i[0]) for i in filtered_def]+[re.escape(i[0]) for i in filtered_keywords] + [i[0] for i in filtered_var]
+    in_pattern = [re.escape(i[0]) for i in filtered_def]+sorted([re.escape(i[0]) for i in filtered_keywords], key=len, reverse=True) + [i[0] for i in filtered_var]
     pattern = re.compile("|".join(in_pattern))
 
     return Lexicon(pattern=pattern, defined=dict_def, keywords=dict_keys, variables=tup_variables)
@@ -147,11 +149,31 @@ def find_token(string: str, lex: Lexicon) -> str:
         raise CompilerError(f'Couldn\'t be tokenized: "{string}"')
     return found
 
+def is_fully_tokenized(string: str) -> bool:
+    flag = False
+    for i in string:
+        if flag:
+            if i=='>':
+                flag = False
+            else:
+                continue
+        elif i=='<':
+            flag = True
+        elif i in ('(', ')', ','):
+            continue
+        else:
+            return True
+    return False
 
 def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: tp.Dict[str, str] = dict()) -> str:
     dictionary = simplify_lexicon(
         frozenset(used_tokens), frozenset(defined.items()))
     s = statement[:]
     s = dictionary.pattern.sub(lambda x: find_token(x.group(), dictionary), s)
-    # TODO: dodać test dla sprawdzania czy istnieje jakieś nieprzekonwertowane gówno
+    
+    # Formating
+    s = s.replace(" ", "")
+    
+    # Additional check
+    assert is_fully_tokenized(s), f"Not fully tokenized: {s}"
     return s

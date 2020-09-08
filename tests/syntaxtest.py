@@ -4,7 +4,7 @@ import os
 import sys
 
 sys.path.append('../app/')
-from Syntax import basic
+from Lexicon import basic
 
 class TestTokenize(test.TestCase):
     # TODO: Rozbudować
