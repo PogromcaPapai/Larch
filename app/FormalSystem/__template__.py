@@ -6,6 +6,9 @@ VERSION = '0.0.1'
 
 Rule = namedtuple('Rule', 'docs', 'pattern_match', 'pattern_sub')
 
+def prepare_for_proving(statement: str) -> str:
+    pass
+
 def check_syntax(tokenized_statement: str) -> bool:
     pass
 
