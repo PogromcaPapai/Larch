@@ -57,9 +57,10 @@ class Tree(object):
     @EngineLog
     def _gen_name(self) -> tp.Tuple[str]:
         if self.parent:
-            dist = 2*alphabet.index(self.name) - (alphabet.index(self.parent.children()[0].name) - alphabet.index(self.parent.children()[1].name))
+            dist = 2*alphabet.index(self.name) - (alphabet.index(self.parent.children()[
+                0].name) - alphabet.index(self.parent.children()[1].name))
             assert dist != 0
-            new=abs(dist)//2
+            new = abs(dist)//2
             if dist < 0:
                 if self.leaves:
                     assert not alphabet[new] in self.leaves.keys()
@@ -73,7 +74,13 @@ class Tree(object):
 
     # Tree reading
 
-    def children(self):
+    def getroot(self):
+        if self.parent:
+            return self.parent.getroot()
+        else:
+            return self.statements[0]
+
+    def getchildren(self):
         return self.left, self.right
 
     def getbranch(self):
@@ -96,9 +103,9 @@ class Tree(object):
 
     @EngineLog
     def add_child(self, l_statement: str, r_statement: str):
-        names=self._gen_name()
-        self.left=Tree(l_statement, names[0], self, leaves_list=self.leaves)
-        self.right=Tree(r_statement, names[1], self, leaves_list=self.leaves)
+        names = self._gen_name()
+        self.left = Tree(l_statement, names[0], self, leaves_list=self.leaves)
+        self.right = Tree(r_statement, names[1], self, leaves_list=self.leaves)
 
     def append(self, *statements):
         if len(statements) == 1:
@@ -123,32 +130,33 @@ class EngineError(Exception):
 
 
 class Session(object):
-    ENGINE_VERSION='0.0.1'
+    ENGINE_VERSION = '0.0.1'
+    SOCKETS = ('FormalSystem', 'Lexicon')
 
     def __init__(self, config_file: str):
-        self.config_name=config_file
+        self.config_name = config_file
         self.read_config()
-        self.iu_socket=self.config['chosen_plugins']['UserInterface']
-        self.sockets={
-            'FormalSystem': pop.Socket('FormalSystem', os.path.abspath(
-                'FormalSystem'), '0.0.1', '__template__.py'),
+        self.iu_socket = self.config['chosen_plugins']['UserInterface']
+        self.sockets = {name: pop.Socket(name, os.path.abspath(name), self.ENGINE_VERSION, '__template__.py',
+                                         self.config['chosen_plugins'].get(name, None)) for name in self.SOCKETS}
 
-        }
+        self.defined = {}
+        self.proof = None
 
     # Plugin manpiulation
 
     @EngineChangeLog
     def plug_switch(self, socket_or_old: str, new: str) -> None:
         if socket_or_old == 'UserInterface' or socket_or_old == self.config['chosen_plugins']['UserInterface']:
-            socket_name='UserInterface'
+            socket_name = 'UserInterface'
         else:
             # Socket name searching
-            socket=self.sockets.get(socket_or_old, None)
+            socket = self.sockets.get(socket_or_old, None)
             if not socket:
                 for i in self.config['chosen_plugins'].items():
                     if i[1] == socket_or_old:
-                        socket_name=i[0]
-                        socket=self.sockets[socket_name]
+                        socket_name = i[0]
+                        socket = self.sockets[socket_name]
             if not socket:
                 raise EngineError(f"Socket/plugin {socket_or_old} not found")
 
@@ -156,11 +164,11 @@ class Session(object):
             socket.plug(new)
 
         # Config editing
-        self.config['chosen_plugins'][socket.name]=new
+        self.config['chosen_plugins'][socket.name] = new
         self.write_config()
 
     def plug_list(self, socket: str) -> list:
-        sock=self.sockets.get(socket, None)
+        sock = self.sockets.get(socket, None)
         if sock is None:
             if socket == "UserInterface":
                 return [file[:-3] for file in os.listdir("UserInterface") if (
@@ -170,7 +178,7 @@ class Session(object):
             return sock.find_plugins()
 
     def plug_gen(self, socket: str, name: str) -> None:
-        sock=self.sockets.get(socket, None)
+        sock = self.sockets.get(socket, None)
         if sock is None:
             if socket == "UserInterface":
                 raise EngineError(
@@ -184,14 +192,40 @@ class Session(object):
     def read_config(self):
         logger.debug("Config loading")
         with open(self.config_name, 'r') as target:
-            self.config=json.load(target)
+            self.config = json.load(target)
 
     def write_config(self):
         logger.debug("Config writing")
         with open(self.config_name, 'w') as target:
             json.dump(self.config, target)
 
+    # Proof manipulation
+
+    def new_proof(self, statement: str):
+        """Initializes a tree for a new proof
+
+        :param statement: Proved statement (will be tokenized)
+        :type statement: str
+        :raises EngineError: System lacks Lexicon plugin or FormalSystem plugin
+        :raises ValueError: Wrong statement syntax
+        """
+        if not self.sockets['Lexicon'].isplugged() or not self.sockets['FormalSystem'].isplugged():
+            raise EngineError(
+                "System lacks Lexicon plugin or FormalSystem plugin")
+        try:
+            tokenized = self.sockets['Lexicon']().tokenize(
+            statement, self.sockets['FormalSystem']().get_used_types(), self.defined)
+        except self.sockets['Lexicon']().CompilerError as e:
+            raise EngineError(str(e))
+        problem = self.sockets['FormalSystem']().check_syntax(tokenized)
+        if problem:
+            logger.warning(f"{statement} is not a valid statement \n{problem}")
+            raise ValueError(f"Syntax error: {problem}")
+        else:
+            self.proof = Tree(tokenized)
+
+
     # Misc
 
     def get_socket_names(self):
-        return {"UserInterface"} | self.sockets.keys()
+        return self.SOCKETS + ("UserInterface")

@@ -61,7 +61,7 @@ class Socket(object):
             self.template = None
             self.functions = template
         self.func_names = self.functions.keys()
-        if plugged == "":
+        if not plugged:
             self.plugin = None
         else:
             self.plug(plugged)
@@ -109,6 +109,9 @@ class Socket(object):
         """Unplugs the current plugin, not recommended"""
         logger.warning(f"{self().__name__} disconnected from {self.name}")
         self.plug = None
+
+    def isplugged(self):
+        return bool(self.plug)
 
     def plug(self, plugin_name: str) -> None:
         """Connects the plugin to the socket
@@ -239,6 +242,8 @@ class Socket(object):
         # Template reading
         funcs = dict()
         for i in inspect.getmembers(template, callable):
+            if i[0].endswith('Error'):
+                continue
             sig = inspect.signature(i[1])
             args = tuple(
                 [sig.parameters[j].annotation for j in sig.parameters.keys()])

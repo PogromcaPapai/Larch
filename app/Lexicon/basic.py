@@ -151,9 +151,9 @@ def find_token(string: str, lex: Lexicon) -> str:
 
 def is_fully_tokenized(string: str) -> bool:
     flag = False
-    for i in string:
+    for num, i in enumerate(string):
         if flag:
-            if i=='>':
+            if i=='>' and (string[num-5:num+1]!='imp_->'):
                 flag = False
             else:
                 continue
@@ -162,8 +162,8 @@ def is_fully_tokenized(string: str) -> bool:
         elif i in ('(', ')', ','):
             continue
         else:
-            return True
-    return False
+            return False
+    return True
 
 def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: tp.Dict[str, str] = dict()) -> str:
     dictionary = simplify_lexicon(
@@ -175,5 +175,6 @@ def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: tp.Dict[str
     s = s.replace(" ", "")
     
     # Additional check
-    assert is_fully_tokenized(s), f"Not fully tokenized: {s}"
+    if not is_fully_tokenized(s):
+        raise CompilerError("System didn't fully tokenize the sentence")
     return s

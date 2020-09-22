@@ -1,6 +1,6 @@
 from collections import OrderedDict, namedtuple
 import typing as tp
-import regex
+import re
 
 SOCKET = 'FormalSystem'
 VERSION = '0.0.1'
@@ -9,12 +9,6 @@ VERSION = '0.0.1'
 # Structures
 
 Rule = namedtuple('Rule', ('symbolic', 'docs', 'func'))
-
-
-def regular_sentence(name: str) -> str:
-    '''Recursive definition of a sentence in Zeroth Order Logic'''
-    return r"(?<__name__>((<not_[^>]{1,3}>)?(?:<sentvar_.>)|(?:\(\g'__name__'\)))(?:<[^>_]{1,3}_.{1,3}>((?:<not_[^>]{1,3}>)?(?:<sentvar_.>)|(?:\(\g'__name__'\))))?)".replace("__name__", name)
-
 
 # Formating and cleaning
 
@@ -92,7 +86,7 @@ def strip_around(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], border_type
 @cleaned
 def reduce_prefix(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], prefix_type: str) -> str:
     if isinstance(statements, str):
-        match = regex.fullmatch(
+        match = re.fullmatch(
             r'<__type___.{1,3}>(.+)'.replace('__type__', prefix_type), statements)
         if match:
             return (match.group(1))
@@ -162,11 +156,31 @@ def prepare_for_proving(statement: str) -> str:
     pass
 
 
-def check_syntax(tokenized_statement: str) -> bool:
-    if regex.fullmatch(regular_sentence('a'), tokenized_statement):
-        return True
+def check_syntax(tokenized_statement: str) -> tp.Union[str, None]:
+    
+    # Bracket testing
+    bracks = 0
+    for i in tokenized_statement:
+        if i==")":
+            bracks -= 1
+        elif i=="(":
+            bracks += 1
+        if bracks < 0:
+            return "Trying to close an unopened bracket"
+    if bracks>0:
+       return "Brackets not closed"
+
+    # Testing by reduction
+    tested = tokenized_statement.replace("(", "").replace(")", "")
+    pattern = re.compile(r'(<not_.{1,3}>)?(<sentvar_\w>)<.{2,3}_.{1,3}>(<not_.{1,3}>)?(<sentvar_\w>)')
+    if pattern.match(tested):
+        return None
     else:
-        return False
+        after = pattern.sub(tested, '<sentvar_X>')
+        if after==tested:
+            return "Wrong structure"
+        else:
+            tested=after[:]
 
 
 def get_rules() -> tp.Dict[str, str]:

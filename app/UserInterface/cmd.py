@@ -3,6 +3,8 @@ import os
 import sys
 import typing as tp
 from math import log10
+from collections import OrderedDict
+from xml.sax.saxutils import escape
 
 import prompt_toolkit as ptk
 
@@ -26,8 +28,8 @@ def UIlogged(func, *args, **kwargs):
         return func(*args, **kwargs)
     return new
 
-# Command parsing execution
 
+# Command parsing execution
 
 class ParsingError(Exception):
     pass
@@ -45,7 +47,7 @@ def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
                 func = i[1]
                 name = i[0]
                 break
-        if func == None:
+        if not func:
             raise ParsingError("Command not found")
         args = command[len(name):].split()
 
@@ -60,9 +62,11 @@ def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
             continue
 
         # Argument conversion
-        if args == 'multiple_strings':
+        if func['args'] == 'multiple_strings':
             # mechanism for prove
             converted = command[len(name):].strip()
+            if len(converted)==0:
+                raise ParsingError("More arguments needed")
         else:
             # mechanism for other types
             if len(args) > len(func['args']):
@@ -86,10 +90,13 @@ def performer(command: tp.Dict[str, tp.Any], session: engine.Session) -> str:
     if 'docs' in command.keys():
         return command['docs']
     else:
-        return command['func'](session, *command['args'])
+        if isinstance(command['args'], str):
+            return command['func'](session, command['args'])
+        else:
+            return command['func'](session, *command['args'])
+
 
 # Commands
-
 
 def do_clear(session) -> str:
     """Clears the screen, useful when dealing with graphical bugs"""
@@ -120,7 +127,7 @@ def do_plug_list(session: engine.Session, socket: str) -> str:
     return f"Plugins available locally for {socket}:\n{plugins}"
 
 
-def do_plug_list_all(session: engine.Session):
+def do_plug_list_all(session: engine.Session) -> str:
     """Lists all the plugins that can be connected to a socket"""
     strings = []
     for i in session.get_socket_names():
@@ -129,7 +136,7 @@ def do_plug_list_all(session: engine.Session):
     return "\n\n".join(strings)
 
 
-def do_plug_gen(session, socket_or_name, name):
+def do_plug_gen(session: engine.Session, socket_or_name: str, name: str) -> str:
     try:
         session.plug_gen(socket_or_name, name)
     except BaseException as e:  # TODO: Sprawdzić wyjątki i zrobić to ładniej
@@ -139,8 +146,25 @@ def do_plug_gen(session, socket_or_name, name):
         return f"Generated plugin {name} from template"
 
 
-# command_dict powinien być posortowany od najdłuższej do najkrótszej komendy
-command_dict = {
+def do_prove(session: engine.Session, sentence: str) -> str:
+    if session.proof:
+        return "A proof would be deleted"
+    try:
+        session.new_proof(sentence)
+    except ValueError:
+        return "Wrong syntax"
+    except engine.EngineError as e:
+        return str(e)
+    else:
+        return session.proof.getroot()
+
+def do_leave(session) -> str:
+    session.proof = None
+    return "Proof was deleted"
+
+
+# command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
+command_dict = OrderedDict({
     # Program interaction
     'plugin switch': {'comm': do_plug_switch, 'args': [str, str], 'add_docs': ''},
     'plugin list all': {'comm': do_plug_list_all, 'args': [], 'add_docs': ''},
@@ -149,8 +173,8 @@ command_dict = {
     'clear': {'comm': do_clear, 'args': [], 'add_docs': ''},
     # Navigation
     'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
-    'leave': {},  # Porzuca nieskończony dowód
-    'prove': {'args': 'multiple_strings'},
+    'leave': {'comm': do_leave, 'args': [], 'add_docs': ''},  # Porzuca nieskończony dowód
+    'prove': {'comm': do_prove, 'args': 'multiple_strings', 'add_docs': ''},
     'get always': {},
     'get branch': {},
     'get tree': {},
@@ -161,28 +185,44 @@ command_dict = {
     'auto always': {},
     'auto': {},
     'use': {},
-}
+})
+
+
+def do_help(session) -> str:
+    """Lists all possible commands"""
+    return "\n".join(command_dict.keys())
+
+
+command_dict['?'] = {'comm': do_help, 'args': [], 'add_docs': ''}
+
 
 # Front-end setup
 
+def get_rprompt(session):
+    DEF_PROMPT = "Miejsce na twój dowód".split()
 
-def get_rprompt():
-    prompt = 'tutaj\nbędzie\nwyświetlał\nsię dowód\narka\ngdynia\ndodana\nkolejna\nlinia\nmusi\nwyjść\nwięcej\nod\n10'.split(
-        '\n')*2
+    # Proof retrieval
+    if session.proof:
+        prompt = session.proof.getbranch()
+    else:
+        prompt = DEF_PROMPT
 
+    # Formatting
+    to_show = []
     max_len = max((len(i) for i in prompt))+1
     for i in range(len(prompt)):
         spaces = max_len-len(prompt[i])-int(log10(i+1))
-        prompt[i] = "".join((str(i+1), ". ", prompt[i], " "*spaces))
-    new = " \n ".join(prompt)
-    return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {new} </style>')
+        to_show.append("".join((str(i+1), ". ", prompt[i], " "*spaces)))
+    new = " \n ".join(to_show)
+    
+    return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {escape(new)} </style>')
 
 
 def get_toolbar():
     return ptk.HTML('This is a <b><style bg="ansired">Toolbar</style></b>!')
 
-# run
 
+# run
 
 def run() -> int:
     """
@@ -195,7 +235,7 @@ def run() -> int:
     session = engine.Session('config.json')
     ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>'))
     console = ptk.PromptSession(
-        "~ ", rprompt=get_rprompt, bottom_toolbar=get_toolbar)
+        "~ ", rprompt=lambda: get_rprompt(session), bottom_toolbar=get_toolbar)
     while True:
         command = console.prompt()
         logger.info(f"Got a command: {command}")

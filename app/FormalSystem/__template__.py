@@ -1,15 +1,13 @@
-from collections import OrderedDict, namedtuple
 import typing as tp
 
 SOCKET = 'FormalSystem'
 VERSION = '0.0.1'
 
-Rule = namedtuple('Rule', 'docs', 'pattern_match', 'pattern_sub')
-
 def prepare_for_proving(statement: str) -> str:
     pass
 
-def check_syntax(tokenized_statement: str) -> bool:
+def check_syntax(tokenized_statement: str) -> tp.Union[str, None]:
+    """Should return string description of the problem in syntax"""
     pass
 
 def get_rules() -> tp.Dict[str, str]:
