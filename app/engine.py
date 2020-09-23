@@ -180,7 +180,7 @@ class Session(object):
 
         self.defined = {}
         self.proof = None
-        self.branch = None
+        self.branch = ""
 
     # Plugin manpiulation
 
@@ -264,6 +264,10 @@ class Session(object):
             self.proof = Tree(tokenized, branch_name='A')
             self.branch = 'A'
 
+    def reset_proof(self):
+        self.proof = None
+        self.branch = ''
+
     # Proof navigation
 
     def getbranch(self):
@@ -279,7 +283,11 @@ class Session(object):
             raise EngineError("There is no proof started")
         new = new.upper()
         if new in ('LEFT', 'RIGHT'):
-            self.branch = self.proof.getneighbour(new)
+            changed = self.proof.getneighbour(new)
+            if changed is None:
+                raise EngineError(f"There is no branch on the {new.lower()}")
+            else:
+                self.branch = changed
         else:
             changed = self.proof.leaves.get(new, None)
             if not changed:

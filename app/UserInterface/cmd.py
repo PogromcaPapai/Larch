@@ -147,6 +147,7 @@ def do_plug_gen(session: engine.Session, socket_or_name: str, name: str) -> str:
 
 
 def do_prove(session: engine.Session, sentence: str) -> str:
+    """Initiates a new proof, needs to be provided with the proved sentence"""
     if session.proof:
         return "A proof would be deleted"
     try:
@@ -156,11 +157,18 @@ def do_prove(session: engine.Session, sentence: str) -> str:
     except engine.EngineError as e:
         return str(e)
     else:
-        return session.proof.getroot()
+        return "Sentence tokenized successfully \nProof initialized"
+
+def do_jump(session: engine.Session, where: str) -> str:
+    """Changes the branch, provide with branch name, >/right or left/<"""
+    try:
+        session.jump({'<':'left', '>':'right'}.get(where, where))
+        return f"Branch changed to {where}"
+    except engine.EngineError as e:
+        return str(e)
 
 def do_leave(session) -> str:
-    session.proof = None
-    session.branch = None
+    session.reset_proof()
     return "Proof was deleted"
 
 
@@ -179,7 +187,7 @@ command_dict = OrderedDict({
     'get always': {},
     'get branch': {},
     'get tree': {},
-    'jump': {},
+    'jump': {'comm': do_jump, 'args': [str], 'add_docs': ''},
     'next': {},  # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
     # Proof manipulation
     'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
@@ -235,8 +243,7 @@ def run() -> int:
     """
     session = engine.Session('config.json')
     ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>'))
-    console = ptk.PromptSession(
-        "~ ", rprompt=lambda: get_rprompt(session), bottom_toolbar=get_toolbar)
+    console = ptk.PromptSession(message=lambda: f"{session.branch}~ ", rprompt=lambda: get_rprompt(session), bottom_toolbar=get_toolbar)
     while True:
         command = console.prompt()
         logger.info(f"Got a command: {command}")
