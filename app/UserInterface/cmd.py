@@ -160,6 +160,7 @@ def do_prove(session: engine.Session, sentence: str) -> str:
 
 def do_leave(session) -> str:
     session.proof = None
+    session.branch = None
     return "Proof was deleted"
 
 
@@ -203,7 +204,7 @@ def get_rprompt(session):
 
     # Proof retrieval
     if session.proof:
-        prompt = session.proof.getbranch()
+        prompt = session.getbranch()
     else:
         prompt = DEF_PROMPT
 
