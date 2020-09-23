@@ -61,7 +61,7 @@ class Socket(object):
             self.template = None
             self.functions = template
         self.func_names = self.functions.keys()
-        if plugged == "":
+        if not plugged:
             self.plugin = None
         else:
             self.plug(plugged)
@@ -85,12 +85,13 @@ class Socket(object):
     def generate_template(self, plugin_name: str) -> None:
         if plugin_name.endswith(".py"):
             plugin_name = plugin_name[:-3]
-        if plugin_name in self.find_plugins():
-            raise FileExistsError(
-                f"{plugin_name} already exists in {self.name}'s directory")
         if self.template:
-            shutil.copyfile(f"{self.dir}/{self.template}.py",
-                            f"{self.dir}/{plugin_name}.py")
+            try:
+                shutil.copyfile(f"{self.dir}/{self.template}.py",
+                                f"{self.dir}/{plugin_name}.py")
+            except shutil.SameFileError:
+                raise FileExistsError(
+                    f"{plugin_name} already exists in {self.name}'s directory")
         else:
             raise FileNotFoundError(
                 f"There is no template available for {self.name}'s plugins")
@@ -108,6 +109,9 @@ class Socket(object):
         """Unplugs the current plugin, not recommended"""
         logger.warning(f"{self().__name__} disconnected from {self.name}")
         self.plug = None
+
+    def isplugged(self):
+        return bool(self.plug)
 
     def plug(self, plugin_name: str) -> None:
         """Connects the plugin to the socket
@@ -238,6 +242,8 @@ class Socket(object):
         # Template reading
         funcs = dict()
         for i in inspect.getmembers(template, callable):
+            if i[0].endswith('Error'):
+                continue
             sig = inspect.signature(i[1])
             args = tuple(
                 [sig.parameters[j].annotation for j in sig.parameters.keys()])

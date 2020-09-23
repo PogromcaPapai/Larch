@@ -1,13 +1,11 @@
 import example1
-import engine
-from UserInterface import cmd
 import unittest as test
 from importlib import import_module
 import os
 import sys
 
 sys.path.append('../app/')
-
+from UserInterface import cmd
 
 class TestParser(test.TestCase):
 
@@ -18,19 +16,18 @@ class TestParser(test.TestCase):
             'str_int': {'comm': example1.str_int_none, 'args': [str, int], 'add_docs': ''},
             'random': {'comm': example1.random, 'args': [], 'add_docs': ''}
         }
-        self.session = engine.Session()
 
     def test_proper(self):
         parsed = cmd.parser('addition 1 2', _dict=self.dict)
-        self.assertEqual(tuple(parsed[0].values()), (example1.add, [1, 2], ''))
+        self.assertEqual(tuple(parsed[0].values()), (example1.add, [1, 2]))
 
     def test_no_args(self):
         parsed = cmd.parser('random', _dict=self.dict)
-        self.assertEqual(tuple(parsed[0].values()), (example1.random, [], ''))
+        self.assertEqual(tuple(parsed[0].values()), (example1.random, []))
 
     def test_long(self):
         parsed = cmd.parser('addition negative 1 2', _dict=self.dict)
-        self.assertEqual(tuple(parsed[0].values()), (example1.sub, [1, 2], ''))
+        self.assertEqual(tuple(parsed[0].values()), (example1.sub, [1, 2]))
 
     def test_wrong_args(self):
         with self.assertRaises(TypeError):
