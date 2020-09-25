@@ -44,7 +44,7 @@ class TreeError(Exception):
 
 class Tree(object):
 
-    def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, children_l: Tree = None, children_r: Tree = None, leaves_list: tp.Dict[str, Tree] = dict()):
+    def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, children_l: Tree = None, children_r: Tree = None, leaves_list: tp.Dict[str, Tree] = None):
         self.name = branch_name
         self.statements = [start_statement]
         self.parent = parent
@@ -53,6 +53,8 @@ class Tree(object):
         self.left = children_l
         self.right = children_r
         self.closed = False
+        if leaves_list is None:
+            leaves_list = dict()
         leaves_list[branch_name] = self
         self.leaves = leaves_list
 
@@ -65,8 +67,8 @@ class Tree(object):
 
     def _gen_name(self) -> tp.Tuple[str]:
         if self.parent:
-            dist = self._distalph(self.name, self.parent.children()[
-                                  0].name) + self._distalph(self.name, self.parent.children()[1].name)
+            dist = self._distalph(self.name, self.parent.getchildren()[
+                                  0].name) + self._distalph(self.name, self.parent.getchildren()[1].name)
             assert dist != 0
             new = abs(dist)//2
             if dist < 0:
@@ -115,19 +117,19 @@ class Tree(object):
     def getneighbour(self, left_right: str) -> tp.Union[Tree, None]:
         min_dist = 100
         obj_w_min = None
-        if left_right.upper() in ('L', 'LEFT'):
+        if left_right.upper() in ('R', 'RIGHT'):
             for i in self.leaves.items():
                 dist = self._distalph(i[0], self.name)
                 if dist>0 and dist<min_dist:
-                    min_dist = i[1]
-                    obj_w_min = dist
+                    min_dist = dist
+                    obj_w_min = i[1]
             return obj_w_min
-        elif left_right.upper() in ('R', 'RIGHT'):
+        elif left_right.upper() in ('L', 'LEFT'):
             for i in self.leaves.items():
                 dist = self._distalph(self.name, i[0])
                 if dist>0 and dist<min_dist:
-                    min_dist = i[1]
-                    obj_w_min = dist
+                    min_dist = dist
+                    obj_w_min = i[1]
             return obj_w_min
         else:
             raise EngineError(f"'{left_right}' is not a valid direction")
@@ -136,23 +138,34 @@ class Tree(object):
     # Tree modification
 
     @EngineLog
-    def add_statement(self, statement: str):
-        self.statements.append(statement)
+    def add_statement(self, statements: tp.Union[str, tp.List[str]]):
+        if isinstance(statements, str):
+            self.statements.append(statements)
+        else:
+            self.statements.extend(statements)
 
     @EngineLog
-    def add_child(self, l_statement: str, r_statement: str):
+    def add_child(self, l_statements: tp.Union[str, tp.List[str]], r_statements: tp.Union[str, tp.List[str]]):
         names = self._gen_name()
-        self.left = Tree(l_statement, names[0], self, leaves_list=self.leaves)
-        self.right = Tree(r_statement, names[1], self, leaves_list=self.leaves)
+        if isinstance(l_statements, str):
+            self.left = Tree(l_statements, names[0], self, leaves_list=self.leaves)
+        else:
+            self.left = Tree(l_statements[0], names[0], self, leaves_list=self.leaves)
+            self.left.add_statement(l_statements[1:])
+        if isinstance(r_statements, str):
+            self.right = Tree(r_statements, names[1], self, leaves_list=self.leaves)
+        else:
+            self.right = Tree(r_statements[0], names[1], self, leaves_list=self.leaves)
+            self.right.add_statement(r_statements[1:])
 
-    def append(self, *statements):
+    def append(self, statements):
         if len(statements) == 1:
             self.add_statement(*statements)
         elif len(statements) == 2:
             self.add_child(*statements)
         else:
             raise TreeError(
-                f'Trying to append {len(statements)} statements to the tree')
+                f'Trying to append {len(statements)} branches to the tree')
 
 # ENGINE
 
@@ -239,8 +252,8 @@ class Session(object):
             json.dump(self.config, target)
 
     # Proof manipulation
-
-    def new_proof(self, statement: str):
+    @EngineLog
+    def new_proof(self, statement: str) -> None:
         """Initializes a tree for a new proof
 
         :param statement: Proved statement (will be tokenized)
@@ -264,9 +277,32 @@ class Session(object):
             self.proof = Tree(tokenized, branch_name='A')
             self.branch = 'A'
 
-    def reset_proof(self):
+    @EngineLog
+    def reset_proof(self) -> None:
         self.proof = None
         self.branch = ''
+
+    @EngineLog
+    def use_rule(self, rule: str, statement_number: int) -> None:
+        if not self.sockets['FormalSystem'].isplugged():
+            raise EngineError(
+                "System lacks FormalSystem plugin")
+        if not self.proof:
+            raise EngineError(
+                "There is no proof started")
+        
+        branch = self.proof.leaves[self.branch].getbranch()
+        if statement_number<=0 or statement_number>len(branch):
+            raise EngineError("No such statement")
+        try:
+            out = self.sockets['FormalSystem']().use_rule(rule, branch[statement_number-1])
+        except Exception as e:
+            if str(e)=="No such rule":
+                raise EngineError("No such rule")
+            else:
+                raise e
+        if out:
+            self.proof.leaves[self.branch].append(out)
 
     # Proof navigation
 
@@ -274,7 +310,7 @@ class Session(object):
         try:
             return self.proof.leaves[self.branch].getbranch()
         except KeyError:
-            raise EngineError(f"Branch '{self.branch}' doesn't exist in this proof")
+            raise EngineError(f"Branch '{self.branch.name}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
 
@@ -283,11 +319,11 @@ class Session(object):
             raise EngineError("There is no proof started")
         new = new.upper()
         if new in ('LEFT', 'RIGHT'):
-            changed = self.proof.getneighbour(new)
+            changed = self.proof.leaves[self.branch].getneighbour(new)
             if changed is None:
                 raise EngineError(f"There is no branch on the {new.lower()}")
             else:
-                self.branch = changed
+                self.branch = changed.name
         else:
             changed = self.proof.leaves.get(new, None)
             if not changed:
@@ -296,7 +332,7 @@ class Session(object):
                 else:
                     raise EngineError(f"Branch '{new}' doesn't exist in this proof")
             else:
-                self.branch = changed
+                self.branch = changed.name
             
 
 

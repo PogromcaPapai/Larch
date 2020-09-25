@@ -165,12 +165,15 @@ def do_jump(session: engine.Session, where: str) -> str:
         session.jump({'<':'left', '>':'right'}.get(where, where))
         return f"Branch changed to {where}"
     except engine.EngineError as e:
-        return str(e)
+        return str(e)   
 
 def do_leave(session) -> str:
     session.reset_proof()
     return "Proof was deleted"
 
+def do_use(session, name1: str, name2: str, statement: int):
+    name = " ".join((name1, name2))
+    session.use_rule(name, statement)
 
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
 command_dict = OrderedDict({
@@ -193,7 +196,7 @@ command_dict = OrderedDict({
     'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
     'auto always': {},
     'auto': {},
-    'use': {},
+    'use': {'comm':do_use, 'args': [str, str, int], 'add_docs': ''},
 })
 
 
