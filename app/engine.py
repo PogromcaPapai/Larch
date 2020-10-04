@@ -273,6 +273,7 @@ class Session(object):
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise ValueError(f"Syntax error: {problem}")
         else:
+            tokenized = self.sockets['FormalSystem']().prepare_for_proving(tokenized)
             self.proof = Tree(tokenized, branch_name='A')
             self.branch = 'A'
 

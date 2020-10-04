@@ -153,7 +153,7 @@ RULES = {
 @cleaned
 def prepare_for_proving(statement: str) -> str:
     '''Cleaning the sentence'''
-    pass
+    return statement
 
 
 def check_syntax(tokenized_statement: str) -> tp.Union[str, None]:
