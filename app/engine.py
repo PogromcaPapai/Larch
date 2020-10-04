@@ -62,7 +62,8 @@ class Tree(object):
 
     @staticmethod
     def _distalph(letter_a: str, letter_b: str) -> int:
-        assert len(letter_a) == 1 and len(letter_b) == 1, "_distalph only checks chars"
+        assert len(letter_a) == 1 and len(
+            letter_b) == 1, "_distalph only checks chars"
         return alphabet.index(letter_a) - alphabet.index(letter_b)
 
     def _gen_name(self) -> tp.Tuple[str]:
@@ -120,14 +121,14 @@ class Tree(object):
         if left_right.upper() in ('R', 'RIGHT'):
             for i in self.leaves.items():
                 dist = self._distalph(i[0], self.name)
-                if dist>0 and dist<min_dist:
+                if dist > 0 and dist < min_dist:
                     min_dist = dist
                     obj_w_min = i[1]
             return obj_w_min
         elif left_right.upper() in ('L', 'LEFT'):
             for i in self.leaves.items():
                 dist = self._distalph(self.name, i[0])
-                if dist>0 and dist<min_dist:
+                if dist > 0 and dist < min_dist:
                     min_dist = dist
                     obj_w_min = i[1]
             return obj_w_min
@@ -148,14 +149,18 @@ class Tree(object):
     def add_child(self, l_statements: tp.Union[str, tp.List[str]], r_statements: tp.Union[str, tp.List[str]]):
         names = self._gen_name()
         if isinstance(l_statements, str):
-            self.left = Tree(l_statements, names[0], self, leaves_list=self.leaves)
+            self.left = Tree(
+                l_statements, names[0], self, leaves_list=self.leaves)
         else:
-            self.left = Tree(l_statements[0], names[0], self, leaves_list=self.leaves)
+            self.left = Tree(
+                l_statements[0], names[0], self, leaves_list=self.leaves)
             self.left.add_statement(l_statements[1:])
         if isinstance(r_statements, str):
-            self.right = Tree(r_statements, names[1], self, leaves_list=self.leaves)
+            self.right = Tree(
+                r_statements, names[1], self, leaves_list=self.leaves)
         else:
-            self.right = Tree(r_statements[0], names[1], self, leaves_list=self.leaves)
+            self.right = Tree(
+                r_statements[0], names[1], self, leaves_list=self.leaves)
             self.right.add_statement(r_statements[1:])
 
     def append(self, statements):
@@ -187,10 +192,10 @@ class Session(object):
     def __init__(self, config_file: str):
         self.config_name = config_file
         self.read_config()
-        self.iu_socket = self.config['chosen_plugins']['UserInterface']
         self.sockets = {name: pop.Socket(name, os.path.abspath(name), self.ENGINE_VERSION, '__template__.py',
-                                         self.config['chosen_plugins'].get(name, None)) for name in self.SOCKETS}
-
+             self.config['chosen_plugins'].get(name, None)) for name in self.SOCKETS}
+        self.sockets.update({"UserInterface": pop.DummySocket("UserInterface", os.path.abspath("UserInterface"), self.ENGINE_VERSION, '__template__.py')})
+        
         self.defined = {}
         self.proof = None
         self.branch = ""
@@ -216,15 +221,12 @@ class Session(object):
             socket.plug(new)
 
         # Config editing
-        self.config['chosen_plugins'][socket.name] = new
+        self.config['chosen_plugins'][socket_name] = new
         self.write_config()
 
     def plug_list(self, socket: str) -> list:
         sock = self.sockets.get(socket, None)
         if sock is None:
-            if socket == "UserInterface":
-                return [file[:-3] for file in os.listdir("UserInterface") if (
-                    file.endswith(".py") and not (file in {"__template__.py", "__init__.py"}))]
             raise EngineError(f"There is no socket named {socket}")
         else:
             return sock.find_plugins()
@@ -232,9 +234,6 @@ class Session(object):
     def plug_gen(self, socket: str, name: str) -> None:
         sock = self.sockets.get(socket, None)
         if sock is None:
-            if socket == "UserInterface":
-                raise EngineError(
-                    "UserInterface sockets need to be created manually")
             raise EngineError(f"There is no socket named {socket}")
         else:
             sock.generate_template(name)
@@ -290,14 +289,15 @@ class Session(object):
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
-        
+
         branch = self.proof.leaves[self.branch].getbranch()
-        if statement_number<=0 or statement_number>len(branch):
+        if statement_number <= 0 or statement_number > len(branch):
             raise EngineError("No such statement")
         try:
-            out = self.sockets['FormalSystem']().use_rule(rule, branch[statement_number-1])
+            out = self.sockets['FormalSystem']().use_rule(
+                rule, branch[statement_number-1])
         except Exception as e:
-            if str(e)=="No such rule":
+            if str(e) == "No such rule":
                 raise EngineError("No such rule")
             else:
                 raise e
@@ -310,7 +310,8 @@ class Session(object):
         try:
             return self.proof.leaves[self.branch].getbranch()
         except KeyError:
-            raise EngineError(f"Branch '{self.branch.name}' doesn't exist in this proof")
+            raise EngineError(
+                f"Branch '{self.branch.name}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
 
@@ -327,16 +328,15 @@ class Session(object):
         else:
             changed = self.proof.leaves.get(new, None)
             if not changed:
-                if len(new)>1:
+                if len(new) > 1:
                     raise EngineError(f"Branch name too long")
                 else:
-                    raise EngineError(f"Branch '{new}' doesn't exist in this proof")
+                    raise EngineError(
+                        f"Branch '{new}' doesn't exist in this proof")
             else:
                 self.branch = changed.name
-            
-
 
     # Misc
 
     def get_socket_names(self):
-        return self.SOCKETS + ("UserInterface")
+        return self.SOCKETS

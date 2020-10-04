@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import typing as tp
+from collections import OrderedDict
 
 Module = type(tp)
 
@@ -21,6 +22,22 @@ def gen_functionDS(func_name: str, returns: tp.Any, *args: tp.Any) -> tp.Tuple[s
 
 
 class Socket(object):
+
+    # Cache-related functions
+    cache = OrderedDict()
+
+    @classmethod
+    def clear_cache(cls, amount=0):
+        """
+        docstring
+        """
+        logger.warning("Starting cache clearing")
+        if amount>0:
+            for _ in range(amount):
+                name = cls.cache.popitem(False)[0]
+                logger.info(f"Deleting {name[1]} (from socket {name[0]}) from cache")
+        else:
+            cls.cache = OrderedDict()
 
     # Magic
 
@@ -80,9 +97,24 @@ class Socket(object):
         else:
             raise PluginError("Nothing is plugged in")
 
+    # Get functions
+
+    def get_plugin_name(self):
+        return self.__call__().__name__
+    
+    def isplugged(self):
+        return bool(self.plug)
+
     # Plugin manipulation
 
     def generate_template(self, plugin_name: str) -> None:
+        """Creates a file called `plugin_name` from the socket's template
+
+        :param plugin_name: Name of the new plugin
+        :type plugin_name: str
+        :raises FileExistsError: File called `plugin_name` already exists
+        :raises FileNotFoundError: Template not found
+        """
         if plugin_name.endswith(".py"):
             plugin_name = plugin_name[:-3]
         if self.template:
@@ -107,11 +139,8 @@ class Socket(object):
 
     def unplug(self) -> None:
         """Unplugs the current plugin, not recommended"""
-        logger.warning(f"{self().__name__} disconnected from {self.name}")
+        logger.warning(f"{self.get_plugin_name()} disconnected from {self.name}")
         self.plug = None
-
-    def isplugged(self):
-        return bool(self.plug)
 
     def plug(self, plugin_name: str) -> None:
         """Connects the plugin to the socket
@@ -145,15 +174,21 @@ class Socket(object):
         self.fits(plug_obj)
 
         # Connecting to the system
-        logger.warning(f"{plugin_name} connected to {self.name}")
         self.plugin = plug_obj
+        logger.warning(f"{plugin_name} connected to {self.name}")
 
-    def _import(self, name: str) -> Module:
-        """Imports a module of the given name and returns it; USE PLUG INSTEAD"""
-        spec = importlib.util.spec_from_file_location(
-            name, f"{self.dir}/{name}.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+    def _import(self, plugin_name: str) -> Module:
+        """Imports a module of the given plugin_name and returns it; USE PLUG INSTEAD"""
+        module = self.cache.get((self.name, plugin_name), None)
+        if module:
+            self.cache.move_to_end((self.name, plugin_name))
+        else:
+            spec = importlib.util.spec_from_file_location(
+                plugin_name, f"{self.dir}/{plugin_name}.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            if plugin_name != self.template:
+                self.cache[(self.name, plugin_name)] = module
         return module
 
     # Verification
@@ -249,6 +284,25 @@ class Socket(object):
                 [sig.parameters[j].annotation for j in sig.parameters.keys()])
             funcs[i[0]] = (args, inspect.signature(i[1]).return_annotation)
         return funcs
+
+
+class DummySocket(Socket):
+    """
+    A socket that that doesn't load the plugin. Use to avoid circular references
+    """
+
+    def __call__(self):
+        raise NotImplementedError("It's a dummy")
+
+    def fits(self, plugin):
+        raise NotImplementedError("It's a dummy")
+
+    def get_plugin_name(self) -> str:
+        return self.plug
+
+    def plug(self, plugin_name: str) -> None:
+        self.plugin = plugin_name
+        logger.warning(f"{plugin_name} connected to {self.name} (dummy)")
 
 ####
 # Exceptions
