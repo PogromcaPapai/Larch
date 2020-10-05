@@ -44,7 +44,8 @@ class TreeError(Exception):
 
 class Tree(object):
 
-    def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, children_l: Tree = None, children_r: Tree = None, leaves_list: tp.Dict[str, Tree] = None):
+    def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, children_l: Tree = None,
+         children_r: Tree = None, leaves_list: tp.Dict[str, Tree] = None, closed: tp.Union[None, tp.Tuple[int]] = None):
         self.name = branch_name
         self.statements = [start_statement]
         self.parent = parent
@@ -52,7 +53,7 @@ class Tree(object):
             not children_l and not children_r), "One child"
         self.left = children_l
         self.right = children_r
-        self.closed = False
+        self.closed = closed
         if leaves_list is None:
             leaves_list = dict()
         leaves_list[branch_name] = self
@@ -98,8 +99,11 @@ class Tree(object):
             return self.left, self.right
 
     def getbranch(self):
+        return self._getbranch(), self.closed
+
+    def _getbranch(self):
         if self.parent:
-            return self.parent.getbranch() + self.statements
+            return self.parent._getbranch() + self.statements
         else:
             return self.statements
 
@@ -109,11 +113,24 @@ class Tree(object):
         else:
             return PrintedTree(sentences=self.statements, left=self.left.get_tree(), right=self.right.get_tree())
 
-    def getleaves(self, *names: tp.Iterableo[str]) -> tp.List[Tree]:
-        if name:
+    def getleaves(self, *names: tp.Iterable[str]) -> tp.List[Tree]:
+        """Returns all or chosen leaves (if names are provided as args)
+
+        :return: List of the leaves
+        :rtype: tp.List[Tree]
+        """
+        if names:
             return [self.leaves.get(i, None) for i in names]
         else:
             return list(self.leaves.values())
+
+    def getopen(self, *names: tp.Iterable[str]) -> tp.Iterator[Tree]:
+        """Returns all or chosen open leaves (if names are provided as args)
+
+        :return: Iterator of the leaves
+        :rtype: tp.Iterator[Tree]
+        """
+        return (i for i in self.getleaves(*names) if not i.closed)
 
     def getneighbour(self, left_right: str) -> tp.Union[Tree, None]:
         min_dist = 100
@@ -150,17 +167,17 @@ class Tree(object):
         names = self._gen_name()
         if isinstance(l_statements, str):
             self.left = Tree(
-                l_statements, names[0], self, leaves_list=self.leaves)
+                l_statements, names[0], self, leaves_list=self.leaves, closed=self.closed)
         else:
             self.left = Tree(
-                l_statements[0], names[0], self, leaves_list=self.leaves)
+                l_statements[0], names[0], self, leaves_list=self.leaves, closed=self.closed)
             self.left.add_statement(l_statements[1:])
         if isinstance(r_statements, str):
             self.right = Tree(
-                r_statements, names[1], self, leaves_list=self.leaves)
+                r_statements, names[1], self, leaves_list=self.leaves, closed=self.closed)
         else:
             self.right = Tree(
-                r_statements[0], names[1], self, leaves_list=self.leaves)
+                r_statements[0], names[1], self, leaves_list=self.leaves, closed=self.closed)
             self.right.add_statement(r_statements[1:])
 
     def append(self, statements):
@@ -171,6 +188,12 @@ class Tree(object):
         else:
             raise TreeError(
                 f'Trying to append {len(statements)} branches to the tree')
+
+    def close(self, contradicting: int, num_self: int = None) -> None:
+        if num_self:
+            self.closed = (num_self, contradicting)
+        else:
+            self.closed = (len(self.getbranch())-1, contradicting)
 
 # ENGINE
 
@@ -193,9 +216,10 @@ class Session(object):
         self.config_name = config_file
         self.read_config()
         self.sockets = {name: pop.Socket(name, os.path.abspath(name), self.ENGINE_VERSION, '__template__.py',
-             self.config['chosen_plugins'].get(name, None)) for name in self.SOCKETS}
-        self.sockets.update({"UserInterface": pop.DummySocket("UserInterface", os.path.abspath("UserInterface"), self.ENGINE_VERSION, '__template__.py')})
-        
+                                         self.config['chosen_plugins'].get(name, None)) for name in self.SOCKETS}
+        self.sockets.update({"UserInterface": pop.DummySocket("UserInterface", os.path.abspath(
+            "UserInterface"), self.ENGINE_VERSION, '__template__.py')})
+
         self.defined = {}
         self.proof = None
         self.branch = ""
@@ -273,7 +297,8 @@ class Session(object):
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise ValueError(f"Syntax error: {problem}")
         else:
-            tokenized = self.sockets['FormalSystem']().prepare_for_proving(tokenized)
+            tokenized = self.sockets['FormalSystem'](
+            ).prepare_for_proving(tokenized)
             self.proof = Tree(tokenized, branch_name='A')
             self.branch = 'A'
 
@@ -283,7 +308,24 @@ class Session(object):
         self.branch = ''
 
     @EngineLog
-    def use_rule(self, rule: str, statement_number: int) -> None:
+    def deal_contradiction(self) -> tp.Union[None, tp.Tuple[int]]:
+        """
+        Checks whether there exists a file contradicting with 
+        """
+        if not self.sockets['FormalSystem'].isplugged():
+            raise EngineError(
+                "System lacks FormalSystem plugin")
+        branch, closed = self.proof.getleaves(self.branch)[0].getbranch()
+        last = branch[-1]
+        for num, sent in enumerate(branch[:-1]):
+            if self.sockets['FormalSystem']().check_contradict(sent, last):
+                EngineError(f"Found a contradiction at ({num}, {len(branch)-1})")
+                self.proof.getleaves(self.branch)[0].close(num, num_self = len(branch)-1)
+                return num, len(branch)-1
+        return None
+
+    @EngineLog
+    def use_rule(self, rule: str, statement_number: int) -> bool:
         if not self.sockets['FormalSystem'].isplugged():
             raise EngineError(
                 "System lacks FormalSystem plugin")
@@ -291,7 +333,7 @@ class Session(object):
             raise EngineError(
                 "There is no proof started")
 
-        branch = self.proof.leaves[self.branch].getbranch()
+        branch = self.proof.leaves[self.branch].getbranch()[0]
         if statement_number <= 0 or statement_number > len(branch):
             raise EngineError("No such statement")
         try:
@@ -302,8 +344,12 @@ class Session(object):
                 raise EngineError("No such rule")
             else:
                 raise e
-        if out:
-            self.proof.leaves[self.branch].append(out)
+        else:
+            if out:
+                self.proof.leaves[self.branch].append(out)
+                return True
+            else:
+                return False
 
     # Proof navigation
 

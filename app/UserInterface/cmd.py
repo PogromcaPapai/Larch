@@ -171,9 +171,26 @@ def do_leave(session) -> str:
     session.reset_proof()
     return "Proof was deleted"
 
-def do_use(session, name1: str, name2: str, statement: int):
+def do_use(session, name1: str, name2: str, statement: int) -> str:
+    out = []
+
+    # Używanie reguł
     name = " ".join((name1, name2))
-    session.use_rule(name, statement)
+    val = session.use_rule(name, statement)
+    if val:
+        out.append(f"Reguła '{name}' wykonana z powodzeniem") #TODO: Zmienić na angielski
+        
+        # Wykrywanie sprzeczności
+        val = session.deal_contradiction()
+        if val:
+            out.append(f"Wykryto sprzeczność zdań {val[0]+1} oraz {val[1]+1}")
+        else:
+            out.append("Nie wykryto nowych sprzeczności")
+    else:
+        out.append(f"Nie znaleziono możliwości zastosowania reguły")
+
+    return "\n".join(out)
+
 
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
 command_dict = OrderedDict({
@@ -215,9 +232,10 @@ def get_rprompt(session):
 
     # Proof retrieval
     if session.proof:
-        prompt = session.getbranch()
+        prompt, closed = session.getbranch()
     else:
         prompt = DEF_PROMPT
+        closed = None
 
     # Formatting
     to_show = []
@@ -225,6 +243,10 @@ def get_rprompt(session):
     for i in range(len(prompt)):
         spaces = max_len-len(prompt[i])-int(log10(i+1))
         to_show.append("".join((str(i+1), ". ", prompt[i], " "*spaces)))
+    if closed:
+        s = f"XXX ({closed[0]+1}, {closed[1]+1})"
+        spaces = max_len-len(s)+int(log10(i+1))+3
+        to_show.append(s+spaces*" ")
     new = " \n ".join(to_show)
     
     return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {escape(new)} </style>')

@@ -78,7 +78,7 @@ def strip_around(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], border_type
         if split:
             return ((statements[:left_end]), (statements[right_start:]))
         else:
-            return (statements[:left_end], statements[right_start:])
+            return ((statements[:left_end], statements[right_start:]),)
     else:
         return tuple([strip_around(s, border_type, split) for s in statements])
 
@@ -89,7 +89,13 @@ def reduce_prefix(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], prefix_typ
         match = re.fullmatch(
             r'<__type___.{1,3}>(.+)'.replace('__type__', prefix_type), statements)
         if match:
-            return (match.group(1))
+            if match.group(1).count('><')>0:
+                if (match.group(1)[0]=='(' and match.group(1)[-1]==')') or match.group(1).startswith('<not_'):
+                    return (match.group(1))
+                else:
+                    return ()
+            else:
+                return (match.group(1))
         else:
             return ()
     else:
@@ -155,6 +161,14 @@ def prepare_for_proving(statement: str) -> str:
     '''Cleaning the sentence'''
     return statement
 
+def check_contradict(statement_1: str, statement_2: str) -> bool:
+    if statement_1.startswith('<not') and not statement_2.startswith('<not'):
+        negated, statement = statement_1, statement_2
+    elif statement_2.startswith('<not') and not statement_1.startswith('<not'):
+        negated, statement = statement_2, statement_1
+    else:
+        return False
+    return reduce_brackets(">".join(negated.split(">")[1:])) == statement
 
 def check_syntax(tokenized_statement: str) -> tp.Union[str, None]:
     

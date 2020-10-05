@@ -57,6 +57,7 @@ full_lexicon = dict(
         (r'[p-z]', 'sentvar'),
     ),
 )
+
 full_lexicon['types'] = reduce(lambda x, y: x | y, ((
     {i[1] for i in value} for value in full_lexicon.values())), set())
 
