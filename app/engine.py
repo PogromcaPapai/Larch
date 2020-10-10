@@ -30,7 +30,7 @@ def EngineChangeLog(func, *args, **kwargs):
         return func(*args, **kwargs)
     return new
 
-# DATA STRUCTURE
+#################################### DATA STRUCTURE ####################################
 
 
 PrintedTree = namedtuple('PrintedTree', ('sentences', 'left', 'right'))
@@ -45,7 +45,7 @@ class TreeError(Exception):
 class Tree(object):
 
     def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, children_l: Tree = None,
-         children_r: Tree = None, leaves_list: tp.Dict[str, Tree] = None, closed: tp.Union[None, tp.Tuple[int]] = None):
+                 children_r: Tree = None, leaves_list: tp.Dict[str, Tree] = None, closed: tp.Union[None, tp.Tuple[int]] = None, used: tp.Set[int] = set()):
         self.name = branch_name
         self.statements = [start_statement]
         self.parent = parent
@@ -54,6 +54,7 @@ class Tree(object):
         self.left = children_l
         self.right = children_r
         self.closed = closed
+        self.used = used
         if leaves_list is None:
             leaves_list = dict()
         leaves_list[branch_name] = self
@@ -167,20 +168,21 @@ class Tree(object):
         names = self._gen_name()
         if isinstance(l_statements, str):
             self.left = Tree(
-                l_statements, names[0], self, leaves_list=self.leaves, closed=self.closed)
+                l_statements, names[0], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
         else:
             self.left = Tree(
-                l_statements[0], names[0], self, leaves_list=self.leaves, closed=self.closed)
+                l_statements[0], names[0], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
             self.left.add_statement(l_statements[1:])
         if isinstance(r_statements, str):
             self.right = Tree(
-                r_statements, names[1], self, leaves_list=self.leaves, closed=self.closed)
+                r_statements, names[1], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
         else:
             self.right = Tree(
-                r_statements[0], names[1], self, leaves_list=self.leaves, closed=self.closed)
+                r_statements[0], names[1], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
             self.right.add_statement(r_statements[1:])
 
-    def append(self, statements):
+    def append(self, statements: tp.Tuple):
+        assert isinstance(statements, tuple)
         if len(statements) == 1:
             self.add_statement(*statements)
         elif len(statements) == 2:
@@ -195,7 +197,15 @@ class Tree(object):
         else:
             self.closed = (len(self.getbranch())-1, contradicting)
 
-# ENGINE
+    def add_used(self, used: int) -> None:
+        """
+        Adds the statement number to the used statements set
+        Should only be used after non-reusable rules
+        """
+        assert used not in self.used
+        self.used.add(used)
+
+#################################### ENGINE ####################################
 
 # Exceptions
 
@@ -217,8 +227,8 @@ class Session(object):
         self.read_config()
         self.sockets = {name: pop.Socket(name, os.path.abspath(name), self.ENGINE_VERSION, '__template__.py',
                                          self.config['chosen_plugins'].get(name, None)) for name in self.SOCKETS}
-        self.sockets.update({"UserInterface": pop.DummySocket("UserInterface", os.path.abspath(
-            "UserInterface"), self.ENGINE_VERSION, '__template__.py')})
+        self.sockets["UserInterface"] = pop.DummySocket("UserInterface", os.path.abspath(
+            "UserInterface"), self.ENGINE_VERSION, '__template__.py')
 
         self.defined = {}
         self.proof = None
@@ -274,7 +284,9 @@ class Session(object):
         with open(self.config_name, 'w') as target:
             json.dump(self.config, target)
 
+
     # Proof manipulation
+
     @EngineLog
     def new_proof(self, statement: str) -> None:
         """Initializes a tree for a new proof
@@ -308,52 +320,83 @@ class Session(object):
         self.branch = ''
 
     @EngineLog
-    def deal_contradiction(self) -> tp.Union[None, tp.Tuple[int]]:
+    def deal_contradiction(self, branch_name: str) -> tp.Union[None, tp.Tuple[int]]:
         """
         Checks whether there exists a file contradicting with 
         """
         if not self.sockets['FormalSystem'].isplugged():
             raise EngineError(
                 "System lacks FormalSystem plugin")
-        branch, closed = self.proof.getleaves(self.branch)[0].getbranch()
+        elif not self.proof:
+            raise EngineError(
+                "There is no proof started")
+
+        try:
+            branch, closed = self.proof.getleaves(branch_name)[0].getbranch()
+        except ValueError as e:
+            if e.message == 'not enough values to unpack (expected 2, got 1)':
+                raise EngineError(
+                    "Proof too short to check for contradictions")
+            else:
+                raise e
+
         last = branch[-1]
         for num, sent in enumerate(branch[:-1]):
             if self.sockets['FormalSystem']().check_contradict(sent, last):
-                EngineError(f"Found a contradiction at ({num}, {len(branch)-1})")
-                self.proof.getleaves(self.branch)[0].close(num, num_self = len(branch)-1)
+                EngineError(
+                    f"Found a contradiction at ({num}, {len(branch)-1})")
+                self.proof.getleaves(branch_name)[0].close(
+                    num, num_self=len(branch)-1)
                 return num, len(branch)-1
         return None
 
     @EngineLog
-    def use_rule(self, rule: str, statement_number: int) -> bool:
+    def use_rule(self, rule: str, statement_number: int) -> tp.Union[None, tp.Tuple[str]]:
+
+        # Technical tests
         if not self.sockets['FormalSystem'].isplugged():
             raise EngineError(
                 "System lacks FormalSystem plugin")
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
-
+        if not rule in self.sockets['FormalSystem']().get_rules().keys():
+            raise EngineError("No such rule")
+        
+        # Statement getting and verification
         branch = self.proof.leaves[self.branch].getbranch()[0]
         if statement_number <= 0 or statement_number > len(branch):
             raise EngineError("No such statement")
-        try:
-            out = self.sockets['FormalSystem']().use_rule(
-                rule, branch[statement_number-1])
-        except Exception as e:
-            if str(e) == "No such rule":
-                raise EngineError("No such rule")
-            else:
-                raise e
+
+        # Check if was used
+        not_reusable = not self.sockets['FormalSystem']().check_rule_reuse(rule)
+        if not_reusable and statement_number in self.proof.leaves[self.branch].used:
+            return None
         else:
+        
+            # Rule execution
+            out = self.sockets['FormalSystem']().use_rule(rule, branch[statement_number-1])
+
             if out:
+                old = self.proof.leaves[self.branch]
                 self.proof.leaves[self.branch].append(out)
-                return True
+                children = old.getchildren()
+                
+                if children is None:
+                    if not_reusable:
+                        self.proof.leaves[self.branch].add_used(statement_number)
+                    return old.name
+                else:
+                    if not_reusable:    
+                        for j in children:
+                            j.add_used(statement_number)
+                    return tuple([i.name for i in children])
             else:
-                return False
+                return None
 
     # Proof navigation
 
-    def getbranch(self):
+    def getbranch(self) -> tp.List[str]:
         try:
             return self.proof.leaves[self.branch].getbranch()
         except KeyError:

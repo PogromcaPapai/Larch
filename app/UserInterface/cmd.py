@@ -174,20 +174,24 @@ def do_leave(session) -> str:
 def do_use(session, name1: str, name2: str, statement: int) -> str:
     out = []
 
-    # Używanie reguł
+    # Rule usage
     name = " ".join((name1, name2))
-    val = session.use_rule(name, statement)
+    try:
+        val = session.use_rule(name, statement)
+    except engine.EngineError as e:
+        return str(e)   
     if val:
-        out.append(f"Reguła '{name}' wykonana z powodzeniem") #TODO: Zmienić na angielski
+        out.append(f"Used '{name}' successfully")
         
-        # Wykrywanie sprzeczności
-        val = session.deal_contradiction()
-        if val:
-            out.append(f"Wykryto sprzeczność zdań {val[0]+1} oraz {val[1]+1}")
-        else:
-            out.append("Nie wykryto nowych sprzeczności")
+        # Contradiction detection and handling
+        for branch in val:
+            cont = session.deal_contradiction(branch)
+            if cont:
+                out.append(f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed.")
+            else:
+                out.append(f"No contradictions found on branch {branch}.")
     else:
-        out.append(f"Nie znaleziono możliwości zastosowania reguły")
+        out.append("Rule couldn't be used")
 
     return "\n".join(out)
 
@@ -214,6 +218,7 @@ command_dict = OrderedDict({
     'auto always': {},
     'auto': {},
     'use': {'comm':do_use, 'args': [str, str, int], 'add_docs': ''},
+    'contra': {'comm':do_use, 'args': [], 'add_docs': ''},
 })
 
 

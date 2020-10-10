@@ -8,7 +8,7 @@ VERSION = '0.0.1'
 
 # Structures
 
-Rule = namedtuple('Rule', ('symbolic', 'docs', 'func'))
+Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
 
 # Formating and cleaning
 
@@ -20,7 +20,6 @@ def reduce_brackets(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]]) -> tp.Un
         opened_left = 0
         opened_right = 0
         min_left = 0
-        min_right = 0
         for i in s:
             if i == '(':
                 opened_left += 1
@@ -29,13 +28,11 @@ def reduce_brackets(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]]) -> tp.Un
             else:
                 continue
             delta_left = opened_left-opened_right
-            delta_right = opened_right-opened_left+min_left
             if min_left > delta_left:
                 min_left = delta_left
-            elif min_right > delta_right:
-                min_right = delta_right
-
-        return "".join((-min_left*"(", s, -min_right*")"))
+        
+        right = opened_left-opened_right-min_left
+        return "".join((-min_left*"(", s, right*")"))
     else:
         return tuple([reduce_brackets(i) for i in statements])
 
@@ -44,6 +41,7 @@ def cleaned(func):
     def wrapped(*args, **kwargs):
         returned = func(*args, **kwargs)
         returned = reduce_brackets(returned)
+        assert quick_bracket_check(returned)
         return returned
     return wrapped
 
@@ -91,11 +89,11 @@ def reduce_prefix(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], prefix_typ
         if match:
             if match.group(1).count('><')>0:
                 if (match.group(1)[0]=='(' and match.group(1)[-1]==')') or match.group(1).startswith('<not_'):
-                    return (match.group(1))
+                    return match.group(1)
                 else:
                     return ()
             else:
-                return (match.group(1))
+                return match.group(1)
         else:
             return ()
     else:
@@ -118,43 +116,49 @@ def add_prefix(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], prefix: str, 
         else:
             raise Exception("Wrong side symbol")
 
+def quick_bracket_check(statement: str):
+    return statement.count('(')==statement.count(')')
 
 # Rule definition
 
 USED_TYPES = ('and', 'or', 'imp', 'not', 'sentvar')
 
-RULES = {
+RULES = { #TODO: Add implication rules
     'true and': Rule(
         symbolic="A and B / A; B",
         docs="",
-        func=lambda x: strip_around(x, 'and', False)
+        func=lambda x: strip_around(x, 'and', False),
+        reusable = True
     ),
     'false and': Rule(
         symbolic="~(A and B) / ~A | ~B",
         docs="",
         func=lambda x: add_prefix(strip_around(
-            reduce_prefix(x, 'not'), 'and', True), 'not', '~')
+            reduce_prefix(x, 'not'), 'and', True), 'not', '~'),
+        reusable = False
     ),
     'false or': Rule(
         symbolic="~(A or B) / ~A; ~B",
         docs="",
         func=lambda x: add_prefix(strip_around(
-            reduce_prefix(x, 'not'), 'or', False), 'not', '~')
+            reduce_prefix(x, 'not'), 'or', False), 'not', '~'),
+        reusable = True
     ),
     'true or': Rule(
         symbolic="(A or B) / A | B",
         docs="",
-        func=lambda x: strip_around(x, 'or', True)
+        func=lambda x: strip_around(x, 'or', True),
+        reusable = False
     ),
     'double not': Rule(
         symbolic="~~A / A",
         docs="",
-        func=lambda x: reduce_prefix(reduce_prefix(x, 'not'), 'not')
+        func=lambda x: tuple([reduce_prefix(reduce_prefix(x, 'not'), 'not')]),
+        reusable = True
     )
 }
 
-# The rest
-
+# __template__
 
 @cleaned
 def prepare_for_proving(statement: str) -> str:
@@ -196,6 +200,9 @@ def check_syntax(tokenized_statement: str) -> tp.Union[str, None]:
         else:
             tested=after[:]
 
+def check_rule_reuse(rule_name: str) -> bool:
+    """Checks whether the rule can be reused on one statement in one branch"""
+    return RULES[rule_name].reusable
 
 def get_rules() -> tp.Dict[str, str]:
     '''Returns the names and documentation of the rules'''
@@ -210,8 +217,5 @@ def get_used_types() -> tp.Tuple[str]:
 
 
 def use_rule(name: str, tokenized_statement: str) -> tp.Union[str, None]:
-    rule = RULES.get(name, None)
-    if rule:
-        return rule.func(tokenized_statement)
-    else:
-        raise Exception("No such rule")
+    rule = RULES[name]
+    return rule.func(tokenized_statement)
