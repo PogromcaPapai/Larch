@@ -44,31 +44,52 @@ class TreeError(Exception):
 
 class Tree(object):
 
-    def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, children_l: Tree = None,
-                 children_r: Tree = None, leaves_list: tp.Dict[str, Tree] = None, closed: tp.Union[None, tp.Tuple[int]] = None, used: tp.Set[int] = set()):
+    def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, child_l: Tree = None,
+                 child_r: Tree = None, leaves_dict: tp.Dict[str, Tree] = None, closed: tp.Union[None, tp.Tuple[int]] = None, used: tp.Set[int] = set()):
+        """The representation of one node in a tree; non-diverging rules add to this one's statement list. It's accounted for in the interface
+
+        :param start_statement: The first statement to insert into the node
+        :type start_statement: str
+        :param branch_name: Name of the branch; use `gen_name` on the parent to find the name, defaults to 'A'
+        :type branch_name: str, optional
+        :param parent: Parent node
+        :type parent: Tree, optional
+        :param child_l: Left child of the node
+        :type child_l: Tree, optional
+        :param child_r: Right child of the node
+        :type child_r: Tree, optional
+        :param leaves_dict: If the tree has a dict of leaves it can be stored here; when not provided system will create an empty dict
+        :type leaves_dict: tp.Dict[str, Tree], optional
+        :param closed: Stores information about the closing sentences of this leaf, defaults to None
+        :type closed: tp.Tuple[int], optional
+        :param used: A set for storing IDs of sentences which can't be used again in this branch, defaults to an empty set
+        :type used: tp.Set[int], optional
+        """
         self.name = branch_name
         self.statements = [start_statement]
         self.parent = parent
-        assert (children_l and children_r) or (
-            not children_l and not children_r), "One child"
-        self.left = children_l
-        self.right = children_r
+        assert (child_l and child_r) or (
+            not child_l and not child_r), "One child"
+        self.left = child_l
+        self.right = child_r
         self.closed = closed
         self.used = used
-        if leaves_list is None:
-            leaves_list = dict()
-        leaves_list[branch_name] = self
-        self.leaves = leaves_list
+        if leaves_dict is None:
+            leaves_dict = dict()
+        leaves_dict[branch_name] = self
+        self.leaves = leaves_dict
 
     # Technical
 
     @staticmethod
     def _distalph(letter_a: str, letter_b: str) -> int:
+        """Calculates distance between two letters"""
         assert len(letter_a) == 1 and len(
             letter_b) == 1, "_distalph only checks chars"
         return alphabet.index(letter_a) - alphabet.index(letter_b)
 
-    def _gen_name(self) -> tp.Tuple[str]:
+    def gen_name(self) -> tp.Tuple[str]:
+        """Generates two possible names for the children of this node"""
         if self.parent:
             dist = self._distalph(self.name, self.parent.getchildren()[
                                   0].name) + self._distalph(self.name, self.parent.getchildren()[1].name)
@@ -87,30 +108,33 @@ class Tree(object):
 
     # Tree reading
 
-    def getroot(self):
+    def getroot(self) -> Tree:
         if self.parent:
             return self.parent.getroot()
         else:
-            return self.statements[0]
+            return self
 
-    def getchildren(self):
+    def getchildren(self) -> tp.Tuple[Tree, Tree]:
         if not self.left:  # Trees with only one child aren't supported
             return None
         else:
             return self.left, self.right
 
-    def getbranch(self):
+    def getbranch(self) -> tp.Tuple[str, bool]:
+        """Returns all the sentences in this node's branch and information about branch's closure"""
         return self._getbranch(), self.closed
 
     def _getbranch(self):
+        """Returns all the sentences in this node's branch; `getbranch` is recommended"""
         if self.parent:
             return self.parent._getbranch() + self.statements
         else:
             return self.statements
 
     def gettree(self):
+        """Creates recursively a named tuple with the sentences"""
         if not self.left:  # Trees with only one child aren't supported
-            return None
+            return PrintedTree(sentences=self.statements, left=None, right=None)
         else:
             return PrintedTree(sentences=self.statements, left=self.left.get_tree(), right=self.right.get_tree())
 
@@ -133,7 +157,9 @@ class Tree(object):
         """
         return (i for i in self.getleaves(*names) if not i.closed)
 
-    def getneighbour(self, left_right: str) -> tp.Union[Tree, None]:
+    def getneighbour(self, left_right: str) -> tp.Union[Tree, None]: 
+        #TODO:  Verify whether it makes sense algorithmically
+        #       Maybe separete a method for leaves and the rest of the tree 
         min_dist = 100
         obj_w_min = None
         if left_right.upper() in ('R', 'RIGHT'):
@@ -157,7 +183,12 @@ class Tree(object):
     # Tree modification
 
     @EngineLog
-    def add_statement(self, statements: tp.Union[str, tp.List[str]]):
+    def add_statement(self, statements: tp.Union[str, tp.List[str]]) -> None:
+        """Adds statement(s) to the node
+
+        :param statements: statement(s)
+        :type statements: str or tp.List[str]
+        """
         if isinstance(statements, str):
             self.statements.append(statements)
         else:
@@ -165,23 +196,37 @@ class Tree(object):
 
     @EngineLog
     def add_child(self, l_statements: tp.Union[str, tp.List[str]], r_statements: tp.Union[str, tp.List[str]]):
-        names = self._gen_name()
+        """Adds statements as children of the node
+
+        :param l_statements: Statement(s) to be added to the left child
+        :type l_statements: str, tp.List[str]
+        :param r_statements: Statement(s) to be added to the right child
+        :type r_statements: str, tp.List[str]
+        """
+        names = self.gen_name()
         if isinstance(l_statements, str):
             self.left = Tree(
-                l_statements, names[0], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
+                l_statements, names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
         else:
             self.left = Tree(
-                l_statements[0], names[0], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
+                l_statements[0], names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
             self.left.add_statement(l_statements[1:])
         if isinstance(r_statements, str):
             self.right = Tree(
-                r_statements, names[1], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
+                r_statements, names[1], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
         else:
             self.right = Tree(
-                r_statements[0], names[1], self, leaves_list=self.leaves, closed=self.closed, used=self.used.copy())
+                r_statements[0], names[1], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
             self.right.add_statement(r_statements[1:])
 
-    def append(self, statements: tp.Tuple):
+    def append(self, statements: tuple):
+        """Prefered way of adding new statements. Use a tuple with tuples filled with sentences.
+        Every tuple of strings is interpreted as a new branch. If there is only one statement it will be added to the existing node. 
+
+        :param statements: Statements grouped into branches
+        :type statements: tuple[tuple[str]]
+        :raises TreeError: Too much branches to append
+        """
         assert isinstance(statements, tuple)
         if len(statements) == 1:
             self.add_statement(*statements)
@@ -192,6 +237,13 @@ class Tree(object):
                 f'Trying to append {len(statements)} branches to the tree')
 
     def close(self, contradicting: int, num_self: int = None) -> None:
+        """Close the 
+
+        :param contradicting: ID of the colliding sentence
+        :type contradicting: int
+        :param num_self: Use if you already have ID of the colliding sentence
+        :type num_self: int, optional
+        """
         if num_self:
             self.closed = (num_self, contradicting)
         else:
@@ -199,7 +251,7 @@ class Tree(object):
 
     def add_used(self, used: int) -> None:
         """
-        Adds the statement number to the used statements set
+        Adds the statement ID to the used statements set
         Should only be used after non-reusable rules
         """
         assert used not in self.used
@@ -351,7 +403,7 @@ class Session(object):
         return None
 
     @EngineLog
-    def use_rule(self, rule: str, statement_number: int) -> tp.Union[None, tp.Tuple[str]]:
+    def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tp.Tuple[str]]:
 
         # Technical tests
         if not self.sockets['FormalSystem'].isplugged():
@@ -365,17 +417,17 @@ class Session(object):
         
         # Statement getting and verification
         branch = self.proof.leaves[self.branch].getbranch()[0]
-        if statement_number <= 0 or statement_number > len(branch):
+        if statement_ID <= 0 or statement_ID > len(branch):
             raise EngineError("No such statement")
 
         # Check if was used
         not_reusable = not self.sockets['FormalSystem']().check_rule_reuse(rule)
-        if not_reusable and statement_number in self.proof.leaves[self.branch].used:
+        if not_reusable and statement_ID in self.proof.leaves[self.branch].used:
             return None
         else:
         
             # Rule execution
-            out = self.sockets['FormalSystem']().use_rule(rule, branch[statement_number-1])
+            out = self.sockets['FormalSystem']().use_rule(rule, branch[statement_ID-1])
 
             if out:
                 old = self.proof.leaves[self.branch]
@@ -384,12 +436,12 @@ class Session(object):
                 
                 if children is None:
                     if not_reusable:
-                        self.proof.leaves[self.branch].add_used(statement_number)
+                        self.proof.leaves[self.branch].add_used(statement_ID)
                     return old.name
                 else:
                     if not_reusable:    
                         for j in children:
-                            j.add_used(statement_number)
+                            j.add_used(statement_ID)
                     return tuple([i.name for i in children])
             else:
                 return None
