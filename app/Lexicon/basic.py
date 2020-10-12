@@ -85,7 +85,6 @@ def check_range(letter: str, indexes: tp.Tuple[int]) -> bool:
 Lexicon = namedtuple(
     'Lexicon', ['pattern', 'defined', 'keywords', 'variables'])
 
-
 @lru_cache(3)
 def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tuple[str]]) -> Lexicon:
     """Filters out patterns that aren't used, creates a regex pattern, returns a lexicon object"""

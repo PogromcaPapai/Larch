@@ -70,7 +70,7 @@ class Tree(object):
         self.parent = parent
         assert (child_l and child_r) or (
             not child_l and not child_r), "One child"
-        self.left = child_l
+        self.left = child_l     # TODO: zaimplementować to jako self.children, a nie left i right
         self.right = child_r
         self.closed = closed
         self.used = used
@@ -92,7 +92,7 @@ class Tree(object):
         """Generates two possible names for the children of this node"""
         if self.parent:
             dist = self._distalph(self.name, self.parent.getchildren()[
-                                  0].name) + self._distalph(self.name, self.parent.getchildren()[1].name)
+                                  0].name) + self._distalph(self.name, self.parent.getchildren()[-1].name)
             assert dist != 0
             new = abs(dist)//2
             if dist < 0:
@@ -183,7 +183,7 @@ class Tree(object):
     # Tree modification
 
     @EngineLog
-    def add_statement(self, statements: tp.Union[str, tp.List[str]]) -> None:
+    def _add_statement(self, statements: tp.Union[str, tp.List[str]]) -> None:
         """Adds statement(s) to the node
 
         :param statements: statement(s)
@@ -195,7 +195,7 @@ class Tree(object):
             self.statements.extend(statements)
 
     @EngineLog
-    def add_child(self, l_statements: tp.Union[str, tp.List[str]], r_statements: tp.Union[str, tp.List[str]]):
+    def _add_child(self, l_statements: tp.Union[str, tp.List[str]], r_statements: tp.Union[str, tp.List[str]]):
         """Adds statements as children of the node
 
         :param l_statements: Statement(s) to be added to the left child
@@ -210,14 +210,14 @@ class Tree(object):
         else:
             self.left = Tree(
                 l_statements[0], names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
-            self.left.add_statement(l_statements[1:])
+            self.left.append((l_statements[1:],))
         if isinstance(r_statements, str):
             self.right = Tree(
                 r_statements, names[1], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
         else:
             self.right = Tree(
                 r_statements[0], names[1], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
-            self.right.add_statement(r_statements[1:])
+            self.right.append((r_statements[1:],))
 
     def append(self, statements: tuple):
         """Prefered way of adding new statements. Use a tuple with tuples filled with sentences.
@@ -229,9 +229,9 @@ class Tree(object):
         """
         assert isinstance(statements, tuple)
         if len(statements) == 1:
-            self.add_statement(*statements)
+            self._add_statement(*statements)
         elif len(statements) == 2:
-            self.add_child(*statements)
+            self._add_child(*statements)
         else:
             raise TreeError(
                 f'Trying to append {len(statements)} branches to the tree')

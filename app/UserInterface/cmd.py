@@ -21,7 +21,7 @@ logging.basicConfig(filename='log.log', level=logging.DEBUG,
 logger = logging.getLogger('interface')
 
 
-def UIlogged(func, *args, **kwargs):
+def UIlogged(func):
     def new(*args, **kwargs):
         logger.debug(
             f"{func.__name__} with args={str(args)} and kwargs={str(kwargs)}")
@@ -36,7 +36,7 @@ class ParsingError(Exception):
 
 
 @UIlogged
-def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
+def parser(statement: str, _dict: dict) -> list:
     comm = []
     for command_raw in statement.split(';'):
         # Function parsing
@@ -282,9 +282,9 @@ def run() -> int:
             continue
         try:
             to_perform = parser(command, command_dict)
-        except ParsingError as e:  # TODO: dopisać sensowny handling
-            ptk.print_formatted_text(f"błąd: {e}")
-            logger.debug(f"Exception caught: {e}")
+        except ParsingError as e:
+            ptk.print_formatted_text(e)
+            logger.debug(f"ParingError: {e}")
             continue
         except TypeError as e:
             ptk.print_formatted_text(f"błąd: złe argumenty")
