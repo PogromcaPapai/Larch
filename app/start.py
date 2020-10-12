@@ -31,3 +31,4 @@ if __name__ == "__main__":
             config = json.load(file)
         UI.plug(config['chosen_plugins']['UserInterface'])
         exit_code = UI().run()
+    sys.exit(exit_code)

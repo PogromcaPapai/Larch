@@ -57,6 +57,7 @@ full_lexicon = dict(
         (r'[p-z]', 'sentvar'),
     ),
 )
+
 full_lexicon['types'] = reduce(lambda x, y: x | y, ((
     {i[1] for i in value} for value in full_lexicon.values())), set())
 
@@ -83,7 +84,6 @@ def check_range(letter: str, indexes: tp.Tuple[int]) -> bool:
 
 Lexicon = namedtuple(
     'Lexicon', ['pattern', 'defined', 'keywords', 'variables'])
-
 
 @lru_cache(3)
 def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tuple[str]]) -> Lexicon:

@@ -21,7 +21,7 @@ logging.basicConfig(filename='log.log', level=logging.DEBUG,
 logger = logging.getLogger('interface')
 
 
-def UIlogged(func, *args, **kwargs):
+def UIlogged(func):
     def new(*args, **kwargs):
         logger.debug(
             f"{func.__name__} with args={str(args)} and kwargs={str(kwargs)}")
@@ -36,7 +36,7 @@ class ParsingError(Exception):
 
 
 @UIlogged
-def parser(statement: str, _dict: dict) -> list:  # Add ?/help handling
+def parser(statement: str, _dict: dict) -> list:
     comm = []
     for command_raw in statement.split(';'):
         # Function parsing
@@ -165,11 +165,35 @@ def do_jump(session: engine.Session, where: str) -> str:
         session.jump({'<':'left', '>':'right'}.get(where, where))
         return f"Branch changed to {where}"
     except engine.EngineError as e:
-        return str(e)
+        return str(e)   
 
 def do_leave(session) -> str:
     session.reset_proof()
     return "Proof was deleted"
+
+def do_use(session, name1: str, name2: str, statement: int) -> str:
+    out = []
+
+    # Rule usage
+    name = " ".join((name1, name2))
+    try:
+        val = session.use_rule(name, statement)
+    except engine.EngineError as e:
+        return str(e)   
+    if val:
+        out.append(f"Used '{name}' successfully")
+        
+        # Contradiction detection and handling
+        for branch in val:
+            cont = session.deal_contradiction(branch)
+            if cont:
+                out.append(f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed.")
+            else:
+                out.append(f"No contradictions found on branch {branch}.")
+    else:
+        out.append("Rule couldn't be used")
+
+    return "\n".join(out)
 
 
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
@@ -193,7 +217,8 @@ command_dict = OrderedDict({
     'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
     'auto always': {},
     'auto': {},
-    'use': {},
+    'use': {'comm':do_use, 'args': [str, str, int], 'add_docs': ''},
+    'contra': {'comm':do_use, 'args': [], 'add_docs': ''},
 })
 
 
@@ -212,9 +237,10 @@ def get_rprompt(session):
 
     # Proof retrieval
     if session.proof:
-        prompt = session.getbranch()
+        prompt, closed = session.getbranch()
     else:
         prompt = DEF_PROMPT
+        closed = None
 
     # Formatting
     to_show = []
@@ -222,6 +248,10 @@ def get_rprompt(session):
     for i in range(len(prompt)):
         spaces = max_len-len(prompt[i])-int(log10(i+1))
         to_show.append("".join((str(i+1), ". ", prompt[i], " "*spaces)))
+    if closed:
+        s = f"XXX ({closed[0]+1}, {closed[1]+1})"
+        spaces = max_len-len(s)+int(log10(i+1))+3
+        to_show.append(s+spaces*" ")
     new = " \n ".join(to_show)
     
     return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {escape(new)} </style>')
@@ -252,9 +282,9 @@ def run() -> int:
             continue
         try:
             to_perform = parser(command, command_dict)
-        except ParsingError as e:  # TODO: dopisać sensowny handling
-            ptk.print_formatted_text(f"błąd: {e}")
-            logger.debug(f"Exception caught: {e}")
+        except ParsingError as e:
+            ptk.print_formatted_text(e)
+            logger.debug(f"ParingError: {e}")
             continue
         except TypeError as e:
             ptk.print_formatted_text(f"błąd: złe argumenty")
