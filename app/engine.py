@@ -10,6 +10,8 @@ from collections import namedtuple
 import pop_engine as pop
 import logging
 
+Module = pop.Module
+
 # Logging config
 
 logger = logging.getLogger('engine')
@@ -45,7 +47,7 @@ class TreeError(Exception):
 class Tree(object):
 
     def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, child_l: Tree = None,
-                 child_r: Tree = None, leaves_dict: tp.Dict[str, Tree] = None, closed: tp.Union[None, tp.Tuple[int]] = None, used: tp.Set[int] = set()):
+                 child_r: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: tp.Set[int] = set()):
         """The representation of one node in a tree; non-diverging rules add to this one's statement list. It's accounted for in the interface
 
         :param start_statement: The first statement to insert into the node
@@ -59,9 +61,9 @@ class Tree(object):
         :param child_r: Right child of the node
         :type child_r: Tree, optional
         :param leaves_dict: If the tree has a dict of leaves it can be stored here; when not provided system will create an empty dict
-        :type leaves_dict: tp.Dict[str, Tree], optional
+        :type leaves_dict: dict[str, Tree], optional
         :param closed: Stores information about the closing sentences of this leaf, defaults to None
-        :type closed: tp.Tuple[int], optional
+        :type closed: tuple[int], optional
         :param used: A set for storing IDs of sentences which can't be used again in this branch, defaults to an empty set
         :type used: tp.Set[int], optional
         """
@@ -88,7 +90,7 @@ class Tree(object):
             letter_b) == 1, "_distalph only checks chars"
         return alphabet.index(letter_a) - alphabet.index(letter_b)
 
-    def gen_name(self) -> tp.Tuple[str]:
+    def gen_name(self) -> tuple[str]:
         """Generates two possible names for the children of this node"""
         if self.parent:
             dist = self._distalph(self.name, self.parent.getchildren()[
@@ -114,13 +116,13 @@ class Tree(object):
         else:
             return self
 
-    def getchildren(self) -> tp.Tuple[Tree, Tree]:
+    def getchildren(self) -> tuple[Tree, Tree]:
         if not self.left:  # Trees with only one child aren't supported
             return None
         else:
             return self.left, self.right
 
-    def getbranch(self) -> tp.Tuple[str, bool]:
+    def getbranch(self) -> tuple[str, bool]:
         """Returns all the sentences in this node's branch and information about branch's closure"""
         return self._getbranch(), self.closed
 
@@ -138,11 +140,11 @@ class Tree(object):
         else:
             return PrintedTree(sentences=self.statements, left=self.left.get_tree(), right=self.right.get_tree())
 
-    def getleaves(self, *names: tp.Iterable[str]) -> tp.List[Tree]:
+    def getleaves(self, *names: tp.Iterable[str]) -> list[Tree]:
         """Returns all or chosen leaves (if names are provided as args)
 
         :return: List of the leaves
-        :rtype: tp.List[Tree]
+        :rtype: list[Tree]
         """
         if names:
             return [self.leaves.get(i, None) for i in names]
@@ -183,11 +185,11 @@ class Tree(object):
     # Tree modification
 
     @EngineLog
-    def _add_statement(self, statements: tp.Union[str, tp.List[str]]) -> None:
+    def _add_statement(self, statements: tp.Union[str, list[str]]) -> None:
         """Adds statement(s) to the node
 
         :param statements: statement(s)
-        :type statements: str or tp.List[str]
+        :type statements: str or list[str]
         """
         if isinstance(statements, str):
             self.statements.append(statements)
@@ -195,13 +197,13 @@ class Tree(object):
             self.statements.extend(statements)
 
     @EngineLog
-    def _add_child(self, l_statements: tp.Union[str, tp.List[str]], r_statements: tp.Union[str, tp.List[str]]):
+    def _add_child(self, l_statements: tp.Union[str, list[str]], r_statements: tp.Union[str, list[str]]):
         """Adds statements as children of the node
 
         :param l_statements: Statement(s) to be added to the left child
-        :type l_statements: str, tp.List[str]
+        :type l_statements: str, list[str]
         :param r_statements: Statement(s) to be added to the right child
-        :type r_statements: str, tp.List[str]
+        :type r_statements: str, list[str]
         """
         names = self.gen_name()
         if isinstance(l_statements, str):
@@ -288,6 +290,16 @@ class Session(object):
 
     # Plugin manpiulation
 
+    def access(socket: str) -> Module:
+        """
+        docstring
+        """
+        if (self.sockets.get(socket, None) |= sock) is None:
+            raise EngineError(f"There is no socket named {socket}")
+        else:
+            return sock()
+            
+
     @EngineChangeLog
     def plug_switch(self, socket_or_old: str, new: str) -> None:
         if socket_or_old == 'UserInterface' or socket_or_old == self.config['chosen_plugins']['UserInterface']:
@@ -348,15 +360,12 @@ class Session(object):
         :raises EngineError: System lacks Lexicon plugin or FormalSystem plugin
         :raises ValueError: Wrong statement syntax
         """
-        if not self.sockets['Lexicon'].isplugged() or not self.sockets['FormalSystem'].isplugged():
-            raise EngineError(
-                "System lacks Lexicon plugin or FormalSystem plugin")
         try:
-            tokenized = self.sockets['Lexicon']().tokenize(
-                statement, self.sockets['FormalSystem']().get_used_types(), self.defined)
-        except self.sockets['Lexicon']().CompilerError as e:
+            tokenized = self.access('Lexicon').tokenize(
+                statement, self.access('FormalSystem').get_used_types(), self.defined)
+        except self.access('Lexicon').CompilerError as e:
             raise EngineError(str(e))
-        problem = self.sockets['FormalSystem']().check_syntax(tokenized)
+        problem = self.access('FormalSystem').check_syntax(tokenized)
         if problem:
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise ValueError(f"Syntax error: {problem}")
@@ -372,14 +381,11 @@ class Session(object):
         self.branch = ''
 
     @EngineLog
-    def deal_contradiction(self, branch_name: str) -> tp.Union[None, tp.Tuple[int]]:
+    def deal_contradiction(self, branch_name: str) -> tp.Union[None, tuple[int]]:
         """
         Checks whether there exists a file contradicting with 
         """
-        if not self.sockets['FormalSystem'].isplugged():
-            raise EngineError(
-                "System lacks FormalSystem plugin")
-        elif not self.proof:
+        if not self.proof:
             raise EngineError(
                 "There is no proof started")
 
@@ -394,7 +400,7 @@ class Session(object):
 
         last = branch[-1]
         for num, sent in enumerate(branch[:-1]):
-            if self.sockets['FormalSystem']().check_contradict(sent, last):
+            if self.access('FormalSystem').check_contradict(sent, last):
                 EngineError(
                     f"Found a contradiction at ({num}, {len(branch)-1})")
                 self.proof.getleaves(branch_name)[0].close(
@@ -403,16 +409,13 @@ class Session(object):
         return None
 
     @EngineLog
-    def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tp.Tuple[str]]:
+    def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tuple[str]]:
 
         # Technical tests
-        if not self.sockets['FormalSystem'].isplugged():
-            raise EngineError(
-                "System lacks FormalSystem plugin")
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
-        if not rule in self.sockets['FormalSystem']().get_rules().keys():
+        if not rule in self.access('FormalSystem').get_rules().keys():
             raise EngineError("No such rule")
         
         # Statement getting and verification
@@ -421,13 +424,13 @@ class Session(object):
             raise EngineError("No such statement")
 
         # Check if was used
-        not_reusable = not self.sockets['FormalSystem']().check_rule_reuse(rule)
+        not_reusable = not self.access('FormalSystem').check_rule_reuse(rule)
         if not_reusable and statement_ID in self.proof.leaves[self.branch].used:
             return None
         else:
         
             # Rule execution
-            out = self.sockets['FormalSystem']().use_rule(rule, branch[statement_ID-1])
+            out = self.access('FormalSystem').use_rule(rule, branch[statement_ID-1])
 
             if out:
                 old = self.proof.leaves[self.branch]
@@ -448,7 +451,7 @@ class Session(object):
 
     # Proof navigation
 
-    def getbranch(self) -> tp.List[str]:
+    def getbranch(self) -> list[str]:
         try:
             return self.proof.leaves[self.branch].getbranch()
         except KeyError:

@@ -12,7 +12,7 @@ Module = type(tp)
 logger = logging.getLogger('pop')
 
 
-def gen_functionDS(func_name: str, returns: tp.Any, *args: tp.Any) -> tp.Tuple[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]:
+def gen_functionDS(func_name: str, returns: tp.Any, *args: tp.Any) -> tuple[str, tuple[tuple[tp.Any], tp.Any]]:
     return (func_name, (args, returns))
 
 
@@ -41,14 +41,14 @@ class Socket(object):
 
     # Magic
 
-    def __init__(self, socket_name: str, abs_path: str, version: str, template: tp.Union[str, tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]], plugged: str = ""):
+    def __init__(self, socket_name: str, abs_path: str, version: str, template: tp.Union[str, dict[str, tuple[tuple[tp.Any], tp.Any]]], plugged: str = ""):
         """Allows the user to smoothly interchange plugins by providing the interface call functions
 
         Args:
             socket_name (str): Name given to the socket, will be used to identify plugins
             abs_path (str): Absolute path to the directory with plugins; use `<> test <>` for testing
             version (str): Version of the socket, will be checked with sockets. Supported format: "x.x.z", changes on "z level" will be omitted in version checking
-            template (str OR tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]): Used as a reference in interface verification. When supplied with file name system 
+            template (str OR dict[str, tuple[tuple[tp.Any], tp.Any]]): Used as a reference in interface verification. When supplied with file name system 
                                                                                 will use it to generate templates. `gen_functionDS` generates the primitive version.
             plugged (str, optional): Name of a plugin which will be connected. Defaults to "".
         """
@@ -92,10 +92,11 @@ class Socket(object):
         Returns:
             Module: Plugged module
         """
-        if self.plug:
-            return self.plugin
+        if self.plug is None:
+            raise PluginError(f"{self.name} lacks a plugin")
         else:
-            raise PluginError("Nothing is plugged in")
+            return self.plugin
+
 
     # Get functions
 
@@ -128,13 +129,13 @@ class Socket(object):
             raise FileNotFoundError(
                 f"There is no template available for {self.name}'s plugins")
 
-    def find_plugins(self) -> tp.List[str]:
+    def find_plugins(self) -> list[str]:
         """
         Returns:
-            tp.List[str]: List of all plugins in the socket's directory
+            list[str]: List of all plugins in the socket's directory
         """
         plugs = [file[:-3] for file in os.listdir(self.dir) if (
-            file.endswith(".py") and not (file in {f"{self.template}.py", "__init__.py"}))]
+            file.endswith(".py") and not (file in {f"{self.template}.py", "__utils__.py", "__init__.py"}))]
         return plugs
 
     def unplug(self) -> None:
@@ -266,7 +267,7 @@ class Socket(object):
             return True
             logger.debug(f"{func.__name__} compatible")
 
-    def _get_functions_from_template(self, template_file_name: str) -> tp.Dict[str, tp.Tuple[tp.Tuple[tp.Any], tp.Any]]:
+    def _get_functions_from_template(self, template_file_name: str) -> dict[str, tuple[tuple[tp.Any], tp.Any]]:
         # Verification
         template = self._import(template_file_name)
         self.check_version(
@@ -320,7 +321,7 @@ class PluginError(Exception):
 class LackOfFunctionsError(PluginError):
     """Raised if module lacks important functions"""
 
-    def __init__(self, socket: Socket, module_name: str, functions: tp.List[str]):
+    def __init__(self, socket: Socket, module_name: str, functions: list[str]):
         info = f"{module_name} can't be connected to {socket.name}, because it lacks {len(functions)} function{'s'*(len(functions)>1)}"
         self.lacking = [
             f"{i}: {', '.join(str(socket.functions[i][0]))} -> {str(socket.functions[i][1])}" for i in functions]

@@ -1,24 +1,13 @@
 import typing as tp
 from collections import namedtuple
-from string import ascii_letters
+from string import ascii_letters as alphabet
 from functools import lru_cache
 import re
 from functools import reduce
+import __utils__ as ut
 
 SOCKET = 'Lexicon'
 VERSION = '0.0.1'
-
-
-class CompilerError(Exception):
-    pass
-
-
-class MultipleTypesError(CompilerError):
-
-    def __init__(self, multiple, *args, **kwargs):
-        lists = [" - ".join((i[0], ", ".join(i[1]))) for i in multiple.items()]
-        msg = "\n".join(("Multiple types found for:", *lists))
-        super().__init__(msg, *args, **kwargs)
 
 
 full_lexicon = dict(
@@ -62,36 +51,39 @@ full_lexicon['types'] = reduce(lambda x, y: x | y, ((
     {i[1] for i in value} for value in full_lexicon.values())), set())
 
 
-def group_by_key(l) -> tp.Dict[str, tp.List[str]]:
+def group_by_value(l: list[tuple[str, str]]) -> dict[str, list[str]]:
+    """When given a list of (key, value) returns a dictionary, where keys are grouped by values"""
     allfound = dict()
     for i in l:
-        if i in allfound.keys():
+        if i[0] in allfound.keys():
             allfound[i[0]].append(i[1])
         else:
             allfound[i[0]] = [i[1]]
     return allfound
 
 
-def letter_range(regex: str) -> tp.Tuple[int]:
-    return (ascii_letters.index(regex[1]), ascii_letters.index(regex[3]))
+def letter_range(regex: str) -> tuple[int, int]:
+    """For a regex given in lexicon.variables returns the indexes of first and last letter"""
+    assert regex[1].islower() is regex[3].islower(), "One letter is higher case and one is lower case"
+    return alphabet.index(regex[1]), alphabet.index(regex[3])
 
 
-def check_range(letter: str, indexes: tp.Tuple[int]) -> bool:
+def check_range(letter: str, indexA: int, indexB: int) -> bool:
+    """Checks if letter's index is in <indexA, indexB>"""
     assert len(letter) == 1
-    v = ascii_letters.index(letter)
-    return v >= indexes[0] and v <= indexes[1]
+    return (alphabet.index(letter) := v) >= indexA and v <= indexB
 
 
 Lexicon = namedtuple(
     'Lexicon', ['pattern', 'defined', 'keywords', 'variables'])
 
 @lru_cache(3)
-def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tuple[str]]) -> Lexicon:
-    """Filters out patterns that aren't used, creates a regex pattern, returns a lexicon object"""
+def simplify_lexicon(used_tokens: set[str], defined: set[tuple[str]]) -> Lexicon:
+    """Filters out patterns that aren't used, creates a regex pattern at Lexicon.pattern, returns a lexicon object"""
     lack = used_tokens - full_lexicon['types']
     if lack:
-        raise CompilerError(
-            "Lexicon lacks following types: {}".format(", ".join(lack)))
+        raise ut.CompilerError(
+            f"Lexicon lacks following types: {', '.join(lack)}")
 
     # Filtering
     filtered_def = list(filter(lambda x: x[1] in used_tokens, defined))
@@ -104,12 +96,12 @@ def simplify_lexicon(used_tokens: tp.FrozenSet[str], defined: tp.FrozenSet[tp.Tu
     assert any(filtered_var), "No variables" # Turn off for testing
 
     # Check for duplicates
-    dup_key = [i for i in group_by_key(filtered_keywords).items() if len(i[1]) > 1]
+    dup_key = [i for i in group_by_value(filtered_keywords).items() if len(i[1]) > 1]
     if len(dup_key) > 0:
-        raise MultipleTypesError(dup_key)
-    dup_var = [i for i in group_by_key(filtered_keywords).items() if len(i[1]) > 1]
+        raise ut.MultipleTypesError(dup_key)
+    dup_var = [i for i in group_by_value(filtered_keywords).items() if len(i[1]) > 1]
     if len(dup_var) > 0:
-        raise MultipleTypesError(dup_var)
+        raise ut.MultipleTypesError(dup_var)
 
     # Prepare data
     dict_keys = {i[0]: f"<{i[1]}_{i[0]}>" for i in filtered_keywords}
@@ -131,50 +123,66 @@ def find_token(string: str, lex: Lexicon) -> str:
     :param lex: Used lexicon object (generate with simplify_lexicon)
     :type lex: Lexicon
     :raises CompilerError: Raised if the string can't be properly tokenized
-    :return: <[type]_[string]>
+    :return: [type]_[string]
     :rtype: str
     """
+    # Check if _ exists in string
+    if '_' in string:
+        raise ut.CompilerError(f'"{string}" contains "_", which is a reserved sign')
+
     # Check defined
     found = lex.defined.get(string, None)
+
     # Check keywords
     if not found:
         found = lex.keywords.get(string, None)
+        
     # Check variables
     if not found:
         for i in lex.variables:
-            if check_range(string, i[0]):
+            if check_range(string, i[0][0], i[0][1]):
                 found = i[1].replace('+', string)
+
     # Raise exception
     if not found:
-        raise CompilerError(f'Couldn\'t be tokenized: "{string}"')
+        raise ut.CompilerError(f'Token not found for "{string}"')
     return found
 
-def is_fully_tokenized(string: str) -> bool:
-    flag = False
-    for num, i in enumerate(string):
-        if flag:
-            if i=='>' and (string[num-5:num+1]!='imp_->'):
-                flag = False
-            else:
-                continue
-        elif i=='<':
-            flag = True
-        elif i in ('(', ')', ','):
-            continue
-        else:
-            return False
-    return True
 
-def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: tp.Dict[str, str] = dict()) -> str:
+def not_fully_tokenized(sent: ut.Sentence) -> bool:
+    return all(("_" in i for i in sent))
+
+
+def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> ut.Sentence:
     dictionary = simplify_lexicon(
         frozenset(used_tokens), frozenset(defined.items()))
     s = statement[:]
-    s = dictionary.pattern.sub(lambda x: find_token(x.group(), dictionary), s)
+    sentence = dictionary.pattern.split()
+    sentence = [find_token(lexem, dictionary) for lexem in sentence]
     
     # Formating
-    s = s.replace(" ", "")
+    for i in sentence:
+        i.replace(" ", "")
     
     # Additional check
-    if not is_fully_tokenized(s):
-        raise CompilerError("System didn't fully tokenize the sentence")
+    if not_fully_tokenized(s):
+        raise ut.CompilerError("System didn't fully tokenize the sentence")
     return s
+
+def get_lexem(token: str) -> str:
+    """Returns the lexem which was used to find the token"""
+    return token.split('_')[-1]
+
+def get_type(token: str) -> str:
+    """Returns the type of a token"""
+    return token.split('_')[0]
+
+def join_to_string(sentence: ut.Sentence) -> str:
+    """Writes the sentence as a string, where tokens are written as `<[token type]_[lexem]>`"""
+    new = []
+    for token in sentence:
+        if token in ('(', ')'):
+            new.append(token)
+        else:
+            new.append(f"<{token}>")
+    return "".join(new)

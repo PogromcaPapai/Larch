@@ -17,11 +17,11 @@ def check_rule_reuse(rule_name: str) -> bool:
     """Checks whether the rule can be reused on one statement in one branch"""
     pass
 
-def get_rules() -> tp.Dict[str, str]:
+def get_rules() -> dict[str, str]:
     """Returns the names and documentation of the rules"""
     pass
 
-def get_used_types() -> tp.Tuple[str]:
+def get_used_types() -> tuple[str]:
     pass
 
 def use_rule(name: str, tokenized_statement: str) -> tp.Union[str, None]:

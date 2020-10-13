@@ -12,7 +12,7 @@ Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
 
 # Formating and cleaning
 
-def reduce_brackets(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]]) -> tp.Union[str, tp.Tuple[tp.Tuple[str]]]:
+def reduce_brackets(statements: tp.Union[str, tuple[tuple[str]]]) -> tp.Union[str, tuple[tuple[str]]]:
     if isinstance(statements, str):
         s = statements.strip('()')
 
@@ -49,7 +49,7 @@ def cleaned(func):
 # Useful functions for creating rules
 
 @cleaned
-def strip_around(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], border_type: str, split: bool) -> tp.Tuple[tp.Tuple[str]]:
+def strip_around(statements: tp.Union[str, tuple[tuple[str]]], border_type: str, split: bool) -> tuple[tuple[str]]:
     if isinstance(statements, str):
         buffor = list()
         lvl = 0
@@ -82,7 +82,7 @@ def strip_around(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], border_type
 
 
 @cleaned
-def reduce_prefix(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], prefix_type: str) -> str:
+def reduce_prefix(statements: tp.Union[str, tuple[tuple[str]]], prefix_type: str) -> str:
     if isinstance(statements, str):
         match = re.fullmatch(
             r'<__type___.{1,3}>(.+)'.replace('__type__', prefix_type), statements)
@@ -100,7 +100,7 @@ def reduce_prefix(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], prefix_typ
         return tuple([reduce_prefix(s, prefix_type) for s in statements])
 
 
-def add_prefix(statements: tp.Union[str, tp.Tuple[tp.Tuple[str]]], prefix: str, symbol: str, side: str = '') -> tp.Union[str, tp.Tuple[tp.Tuple[str]]]:
+def add_prefix(statements: tp.Union[str, tuple[tuple[str]]], prefix: str, symbol: str, side: str = '') -> tp.Union[str, tuple[tuple[str]]]:
     if isinstance(statements, str):
         if len(statements)==11: # 11 is the length of '<sentvar_X>'
             return f'<{prefix}_{symbol}>{statements}'
@@ -204,7 +204,7 @@ def check_rule_reuse(rule_name: str) -> bool:
     """Checks whether the rule can be reused on one statement in one branch"""
     return RULES[rule_name].reusable
 
-def get_rules() -> tp.Dict[str, str]:
+def get_rules() -> dict[str, str]:
     '''Returns the names and documentation of the rules'''
     rule_dict = dict()
     for name, rule in RULES.items():
@@ -212,7 +212,7 @@ def get_rules() -> tp.Dict[str, str]:
     return rule_dict
 
 
-def get_used_types() -> tp.Tuple[str]:
+def get_used_types() -> tuple[str]:
     return USED_TYPES
 
 

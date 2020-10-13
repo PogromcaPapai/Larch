@@ -86,7 +86,7 @@ def parser(statement: str, _dict: dict) -> list:
 
 
 @UIlogged
-def performer(command: tp.Dict[str, tp.Any], session: engine.Session) -> str:
+def performer(command: dict[str, tp.Any], session: engine.Session) -> str:
     if 'docs' in command.keys():
         return command['docs']
     else:
