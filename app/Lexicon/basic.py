@@ -77,6 +77,7 @@ def check_range(letter: str, indexA: int, indexB: int) -> bool:
 Lexicon = namedtuple(
     'Lexicon', ['pattern', 'defined', 'keywords', 'variables'])
 
+
 @lru_cache(3)
 def simplify_lexicon(used_tokens: set[str], defined: set[tuple[str]]) -> Lexicon:
     """Filters out patterns that aren't used, creates a regex pattern at Lexicon.pattern, returns a lexicon object"""
@@ -155,7 +156,7 @@ def not_fully_tokenized(sent: ut.Sentence) -> bool:
 
 def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> ut.Sentence:
     dictionary = simplify_lexicon(
-        frozenset(used_tokens), frozenset(defined.items()))
+        set(used_tokens), frozenset(defined.items()))
     s = statement[:]
     sentence = dictionary.pattern.split()
     sentence = [find_token(lexem, dictionary) for lexem in sentence]
@@ -169,13 +170,16 @@ def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, s
         raise ut.CompilerError("System didn't fully tokenize the sentence")
     return s
 
+
 def get_lexem(token: str) -> str:
     """Returns the lexem which was used to find the token"""
     return token.split('_')[-1]
 
+
 def get_type(token: str) -> str:
     """Returns the type of a token"""
     return token.split('_')[0]
+
 
 def join_to_string(sentence: ut.Sentence) -> str:
     """Writes the sentence as a string, where tokens are written as `<[token type]_[lexem]>`"""
