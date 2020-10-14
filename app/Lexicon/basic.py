@@ -4,7 +4,7 @@ from string import ascii_letters as alphabet
 from functools import lru_cache
 import re
 from functools import reduce
-import __utils__ as ut
+from __utils__ import *
 
 SOCKET = 'Lexicon'
 VERSION = '0.0.1'
@@ -71,7 +71,7 @@ def letter_range(regex: str) -> tuple[int, int]:
 def check_range(letter: str, indexA: int, indexB: int) -> bool:
     """Checks if letter's index is in <indexA, indexB>"""
     assert len(letter) == 1
-    return (alphabet.index(letter) := v) >= indexA and v <= indexB
+    return (v := alphabet.index(letter)) >= indexA and v <= indexB
 
 
 Lexicon = namedtuple(
@@ -79,11 +79,11 @@ Lexicon = namedtuple(
 
 
 @lru_cache(3)
-def simplify_lexicon(used_tokens: set[str], defined: set[tuple[str]]) -> Lexicon:
+def simplify_lexicon(used_tokens: frozenset[str], defined: frozenset[tuple[str, str]]) -> Lexicon:
     """Filters out patterns that aren't used, creates a regex pattern at Lexicon.pattern, returns a lexicon object"""
     lack = used_tokens - full_lexicon['types']
     if lack:
-        raise ut.CompilerError(
+        raise lexicon_utils.CompilerError(
             f"Lexicon lacks following types: {', '.join(lack)}")
 
     # Filtering
@@ -99,10 +99,10 @@ def simplify_lexicon(used_tokens: set[str], defined: set[tuple[str]]) -> Lexicon
     # Check for duplicates
     dup_key = [i for i in group_by_value(filtered_keywords).items() if len(i[1]) > 1]
     if len(dup_key) > 0:
-        raise ut.MultipleTypesError(dup_key)
+        raise lexicon_utils.MultipleTypesError(dup_key)
     dup_var = [i for i in group_by_value(filtered_keywords).items() if len(i[1]) > 1]
     if len(dup_var) > 0:
-        raise ut.MultipleTypesError(dup_var)
+        raise lexicon_utils.MultipleTypesError(dup_var)
 
     # Prepare data
     dict_keys = {i[0]: f"<{i[1]}_{i[0]}>" for i in filtered_keywords}
@@ -129,7 +129,7 @@ def find_token(string: str, lex: Lexicon) -> str:
     """
     # Check if _ exists in string
     if '_' in string:
-        raise ut.CompilerError(f'"{string}" contains "_", which is a reserved sign')
+        raise lexicon_utils.CompilerError(f'"{string}" contains "_", which is a reserved sign')
 
     # Check defined
     found = lex.defined.get(string, None)
@@ -146,19 +146,18 @@ def find_token(string: str, lex: Lexicon) -> str:
 
     # Raise exception
     if not found:
-        raise ut.CompilerError(f'Token not found for "{string}"')
+        raise lexicon_utils.CompilerError(f'Token not found for "{string}"')
     return found
 
 
-def not_fully_tokenized(sent: ut.Sentence) -> bool:
+def is_fully_tokenized(sent: lexicon_utils.Sentence) -> bool:
     return all(("_" in i for i in sent))
 
 
-def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> ut.Sentence:
+def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> lexicon_utils.Sentence:
     dictionary = simplify_lexicon(
-        set(used_tokens), frozenset(defined.items()))
-    s = statement[:]
-    sentence = dictionary.pattern.split()
+        frozenset(used_tokens), frozenset(defined.items()))
+    sentence = dictionary.pattern.findall(statement)
     sentence = [find_token(lexem, dictionary) for lexem in sentence]
     
     # Formating
@@ -166,9 +165,9 @@ def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, s
         i.replace(" ", "")
     
     # Additional check
-    if not_fully_tokenized(s):
-        raise ut.CompilerError("System didn't fully tokenize the sentence")
-    return s
+    if is_fully_tokenized(sentence):
+        raise lexicon_utils.CompilerError("System didn't fully tokenize the sentence")
+    return sentence
 
 
 def get_lexem(token: str) -> str:
@@ -181,7 +180,7 @@ def get_type(token: str) -> str:
     return token.split('_')[0]
 
 
-def join_to_string(sentence: ut.Sentence) -> str:
+def join_to_string(sentence: lexicon_utils.Sentence) -> str:
     """Writes the sentence as a string, where tokens are written as `<[token type]_[lexem]>`"""
     new = []
     for token in sentence:

@@ -1,1 +1,7 @@
-{"chosen_plugins": {"UserInterface": "cmd", "Lexicon": "basic", "FormalSystem": "zeroth_order_logic"}}
+{
+    "chosen_plugins": {
+        "UserInterface": "cmd",
+        "Lexicon": "basic",
+        "FormalSystem": "zeroth_order_logic"
+    }
+}

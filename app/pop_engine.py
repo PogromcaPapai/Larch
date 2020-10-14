@@ -3,6 +3,7 @@ import importlib.util
 import inspect
 import logging
 import os
+import sys
 import shutil
 import typing as tp
 from collections import OrderedDict
@@ -92,10 +93,10 @@ class Socket(object):
         Returns:
             Module: Plugged module
         """
-        if self.plug is None:
-            raise PluginError(f"{self.name} lacks a plugin")
-        else:
+        if self.plugin:
             return self.plugin
+        else:
+            raise PluginError(f"{self.name} lacks a plugin")
 
 
     # Get functions
@@ -184,10 +185,12 @@ class Socket(object):
         if module:
             self.cache.move_to_end((self.name, plugin_name))
         else:
+            sys.path.insert(0, self.dir)
             spec = importlib.util.spec_from_file_location(
                 plugin_name, f"{self.dir}/{plugin_name}.py")
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
+            sys.path.pop(0)
             if plugin_name != self.template:
                 self.cache[(self.name, plugin_name)] = module
         return module

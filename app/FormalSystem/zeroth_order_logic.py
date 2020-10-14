@@ -1,7 +1,5 @@
-from collections import namedtuple
 import typing as tp
-import re
-import __utils__ as utils
+from __utils__ import *
 
 SOCKET = 'FormalSystem'
 VERSION = '0.0.1'
@@ -52,35 +50,35 @@ RULES = { #TODO: Add implication rules
 # __template__
 
 
-@utils.cleaned
-def prepare_for_proving(statement: str) -> str:
+@cleaned
+def prepare_for_proving(statement: Sentence) -> str:
     '''Cleaning the sentence'''
     return statement
 
 
-def check_contradict(statement_1: str, statement_2: str) -> bool:
-    if statement_1.startswith('<not') and not statement_2.startswith('<not'):
+def check_contradict(statement_1: Sentence, statement_2: Sentence) -> bool:
+    if statement_1[0].startswith('not') and not statement_2[0].startswith('not'):
         negated, statement = statement_1, statement_2
-    elif statement_2.startswith('<not') and not statement_1.startswith('<not'):
+    elif statement_2[0].startswith('not') and not statement_1[0].startswith('not'):
         negated, statement = statement_2, statement_1
     else:
         return False
-    return reduce_brackets(">".join(negated.split(">")[1:])) == statement
+    return reduce_brackets(negated[1:]) == statement
 
 
-def check_syntax(sentence: sentence) -> bool:
+def check_syntax(sentence: Sentence) -> tp.Union[str, None]:
     """True if sentence's syntax is correct; Doesn't check brackets"""
-    raise NotImplementedError()
-    tested = "".join(tokenized_statement).replace("(", "").replace(")", "")
-    pattern = re.compile(r'(<not_.{1,3}>)?(<sentvar_\w>)<.{2,3}_.{1,3}>(<not_.{1,3}>)?(<sentvar_\w>)')
-    if pattern.match(tested):
-        return None
-    else:
-        after = pattern.sub(tested, '<sentvar_X>')
-        if after==tested:
-            return "Wrong structure"
-        else:
-            tested=after[:]
+    return None
+    # tested = "".join(tokenized_statement).replace("(", "").replace(")", "")
+    # pattern = re.compile(r'(<not_.{1,3}>)?(<sentvar_\w>)<.{2,3}_.{1,3}>(<not_.{1,3}>)?(<sentvar_\w>)')
+    # if pattern.match(tested):
+    #     return None
+    # else:
+    #     after = pattern.sub(tested, '<sentvar_X>')
+    #     if after==tested:
+    #         return "Wrong structure"
+    #     else:
+    #         tested=after[:]
 
 
 def check_rule_reuse(rule_name: str) -> bool:
@@ -100,6 +98,10 @@ def get_used_types() -> tuple[str]:
     return USED_TYPES
 
 
-def use_rule(name: str, tokenized_statement: str) -> tp.Union[str, None]:
+def use_rule(name: str, tokenized_statement: Sentence) -> tp.Union[tuple[tuple[Sentence]], None]:
     rule = RULES[name]
-    return rule.func(tokenized_statement)
+    fin = rule.func(tokenized_statement)
+    if fin:
+        return fin
+    else:
+        return None

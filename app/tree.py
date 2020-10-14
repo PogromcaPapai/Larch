@@ -1,4 +1,8 @@
+from __future__ import annotations
 
+import typing as tp
+from collections import namedtuple
+from string import ascii_uppercase as alphabet
 
 Sentence = tp.NewType("Sentence", list[str])
 
@@ -14,12 +18,12 @@ class TreeError(Exception):
 
 class Tree(object):
 
-    def __init__(self, start_statement: str, branch_name: str = 'A', parent: Tree = None, child_l: Tree = None,
+    def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: Tree = None, child_l: Tree = None,
                  child_r: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: tp.Set[int] = set()):
         """The representation of one node in a tree; non-diverging rules add to this one's statement list. It's accounted for in the interface
 
         :param start_statement: The first statement to insert into the node
-        :type start_statement: str
+        :type start_statement: Sentence
         :param branch_name: Name of the branch; use `gen_name` on the parent to find the name, defaults to 'A'
         :type branch_name: str, optional
         :param parent: Parent node
@@ -152,20 +156,15 @@ class Tree(object):
 
     # Tree modification
 
-    @EngineLog
-    def _add_statement(self, statements: tp.Union[str, list[str]]) -> None:
+    def _add_statements(self, statements: tuple[Sentence]) -> None:
         """Adds statement(s) to the node
 
         :param statements: statement(s)
-        :type statements: str or list[str]
+        :type statements: Sentence
         """
-        if isinstance(statements, str):
-            self.statements.append(statements)
-        else:
-            self.statements.extend(statements)
+        self.statements.extend(statements)
 
-    @EngineLog
-    def _add_child(self, l_statements: tp.Union[str, list[str]], r_statements: tp.Union[str, list[str]]):
+    def _add_children(self, l_statements: tuple[Sentence], r_statements: tuple[Sentence]):
         """Adds statements as children of the node
 
         :param l_statements: Statement(s) to be added to the left child
@@ -174,22 +173,16 @@ class Tree(object):
         :type r_statements: str, list[str]
         """
         names = self.gen_name()
-        if isinstance(l_statements, str):
-            self.left = Tree(
-                l_statements, names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
-        else:
-            self.left = Tree(
-                l_statements[0], names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
-            self.left.append((l_statements[1:],))
-        if isinstance(r_statements, str):
-            self.right = Tree(
-                r_statements, names[1], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
-        else:
-            self.right = Tree(
-                r_statements[0], names[1], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
-            self.right.append((r_statements[1:],))
+        self.left = Tree(
+            l_statements[0], names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
+        if (to_add := l_statements[1:]):
+            self.left.append((to_add,))
+        self.right = Tree(
+            r_statements[0], names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
+        if (to_add := r_statements[1:]):
+            self.right.append((to_add,))
 
-    def append(self, statements: tuple):
+    def append(self, statements: tuple[tuple[Sentence]]):
         """Prefered way of adding new statements. Use a tuple with tuples filled with sentences.
         Every tuple of strings is interpreted as a new branch. If there is only one statement it will be added to the existing node. 
 
@@ -199,9 +192,9 @@ class Tree(object):
         """
         assert isinstance(statements, tuple)
         if len(statements) == 1:
-            self._add_statement(*statements)
+            self._add_statements(*statements)
         elif len(statements) == 2:
-            self._add_child(*statements)
+            self._add_children(*statements)
         else:
             raise TreeError(
                 f'Trying to append {len(statements)} branches to the tree')

@@ -1,24 +1,23 @@
 from __future__ import annotations
+
 import json
+import logging
 import logging as log
 import os
 import typing as tp
-from string import ascii_uppercase as alphabet
-from collections import namedtuple
-
 
 import pop_engine as pop
 from tree import *
-import logging
 
 Module = pop.Module
+
 
 # Logging config
 
 logger = logging.getLogger('engine')
 
 
-def EngineLog(func, *args, **kwargs):
+def EngineLog(func):
     def new(*args, **kwargs):
         logger.debug(
             f"{func.__name__} with args={str(args)} and kwargs={str(kwargs)}")
@@ -26,16 +25,21 @@ def EngineLog(func, *args, **kwargs):
     return new
 
 
-def EngineChangeLog(func, *args, **kwargs):
+def EngineChangeLog(func):
     def new(*args, **kwargs):
         logger.info(
             f"{func.__name__} with args={str(args)} and kwargs={str(kwargs)}")
         return func(*args, **kwargs)
     return new
 
-
-#################################### ENGINE ####################################
-
+def DealWithPOP(func):
+    """A decorator which convert all PluginErrors to EngineErrors for simpler handling"""
+    def new(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except pop.PluginError as e:
+            raise EngineError(str(e))
+    return new
 
 # Exceptions
 
@@ -65,9 +69,9 @@ class Session(object):
 
     # Plugin manpiulation
 
-    def access(socket: str) -> Module:
+    def access(self, socket: str) -> Module:
         """Returns the module plugges into a socket of the given name"""
-        if (self.sockets.get(socket, None) |= sock) is None:
+        if (sock := self.sockets.get(socket, None)) is None:
             raise EngineError(f"There is no socket named {socket}")
         else:
             return sock()
@@ -131,6 +135,7 @@ class Session(object):
     # Proof manipulation
 
     @EngineLog
+    @DealWithPOP
     def new_proof(self, statement: str) -> None:
         """Initializes a tree for a new proof
 
@@ -139,18 +144,17 @@ class Session(object):
         :raises EngineError: System lacks Lexicon plugin or FormalSystem plugin
         :raises ValueError: Wrong statement syntax
         """
-        try:
-            tokenized = self.access('Lexicon').tokenize(
+        # try:
+        tokenized = self.access('Lexicon').tokenize(
                 statement, self.access('FormalSystem').get_used_types(), self.defined)
-        except self.access('Lexicon').CompilerError as e:
-            raise EngineError(str(e))
+        # except self.access('Lexicon').CompilerError as e:        #TODO: coś wykombinować, aby wychwytywało tylko pewne błędy
+        #     raise EngineError(str(e))
         problem = self.access('FormalSystem').check_syntax(tokenized)
         if problem:
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise ValueError(f"Syntax error: {problem}")
         else:
-            tokenized = self.sockets['FormalSystem'](
-            ).prepare_for_proving(tokenized)
+            tokenized = self.access('FormalSystem').prepare_for_proving(tokenized)
             self.proof = Tree(tokenized, branch_name='A')
             self.branch = 'A'
 
@@ -160,6 +164,7 @@ class Session(object):
         self.branch = ''
 
     @EngineLog
+    @DealWithPOP
     def deal_contradiction(self, branch_name: str) -> tp.Union[None, tuple[int]]:
         """
         Checks whether there exists a file contradicting with 
@@ -188,6 +193,7 @@ class Session(object):
         return None
 
     @EngineLog
+    @DealWithPOP
     def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tuple[str]]:
 
         # Technical tests
@@ -230,14 +236,17 @@ class Session(object):
 
     # Proof navigation
 
-    def getbranch(self) -> list[Sentence]:
+    @DealWithPOP
+    def getbranch(self) -> list[list[str], tuple[int, int]]:
         try:
-            return self.proof.leaves[self.branch].getbranch()
+            branch, closed = self.proof.leaves[self.branch].getbranch()
         except KeyError:
             raise EngineError(
                 f"Branch '{self.branch.name}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
+        getlexem = self.access('Lexicon').get_lexem
+        return [getlexem(i) for i in branch], closed
 
     def jump(self, new: str):
         if not self.proof:
