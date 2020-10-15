@@ -197,7 +197,15 @@ class Socket(object):
 
     # Verification
 
-    def check_name(self, plugin: Module, message: str) -> bool:
+    def check_name(self, plugin: Module, message: str) -> None:
+        """Verifies socket name of the plugin
+
+        :param plugin: Plugin to test
+        :type plugin: Module
+        :param message: Message to show in the exception
+        :type message: str
+        :raises PluginError: Wrong plugin name
+        """
         assert 'SOCKET' in dir(plugin), "No socket name in the plugin"
         if plugin.SOCKET != self.name:
             raise PluginError(message)
@@ -205,19 +213,21 @@ class Socket(object):
             logger.debug(f"Checked socket")
             return True
 
-    def check_version(self, plugin: Module, message: str) -> bool:
-        """Checks plugin versions. Supported format: "x.x.z", changes on "z level" will be omitted in version checking
+    def check_version(self, plugin: Module, message: str) -> None:
+        """Verifies plugin versions. Supported format: "x.x.z", changes on "z level" will be omitted in version checking
 
-        Raises:
-            VersionError: Wrong plugin version
-            SyntaxError: Wrong version formatting in the plugin
+        :param plugin: Checked plugin
+        :type plugin: Module
+        :param message: Message to add if an exception is raised
+        :type message: str
+        :raises VersionError: Wrong plugin version
         """
         assert 'VERSION' in dir(plugin), "No plugin version in the plugin"
         plugin_ver = [int(i) for i in plugin.VERSION.split(".")]
         if len(plugin_ver) != 3:
             logger.error(
                 f"Wrong version format in the plugin: {str(plugin.VERSION)}")
-            raise SyntaxError(
+            raise PluginError(
                 f"Wrong version format used in the plugin: {str(plugin.VERSION)}")
         if plugin_ver[:-1] == self.version[:-1]:
             logger.debug(f"Checked version")

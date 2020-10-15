@@ -195,19 +195,6 @@ def get_type(token: str) -> str:
     else:
         return token.split('_')[0]
 
-
-def get_readable(sentence: utils.Sentence) -> str:
-    """Returns the lexem which was used to find the token"""
-    assert isinstance(sentence, list)
-    readable = []
-    for lexem in (get_lexem(i) for i in sentence):
-        if len(lexem) > 1:
-            readable.append(f" {lexem} ")
-        else:
-            readable.append(lexem)
-    return "".join(readable).replace("  ", " ")
-
-
 def join_to_string(sentence: utils.Sentence) -> str:
     """Writes the sentence as a string, where tokens are written as `<[token type]_[lexem]>`"""
     new = []

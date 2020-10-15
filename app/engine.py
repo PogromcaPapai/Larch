@@ -53,7 +53,7 @@ class EngineError(Exception):
 
 class Session(object):
     ENGINE_VERSION = '0.0.1'
-    SOCKETS = ('FormalSystem', 'Lexicon')
+    SOCKETS = ('FormalSystem', 'Lexicon', 'Output')
 
     def __init__(self, session_ID: str, config_file: str):
         self.id = session_ID
@@ -99,11 +99,14 @@ class Session(object):
                     socket_name = i[0]
                     socket = self.sockets[socket_name]
         if not socket:
-            raise EngineError(f"Socket/plugin {socket_or_old} not found")
+            raise EngineError(f"Socket/plugin {socket_or_old} not found in the program")
 
         # Plugging
-        socket.plug(new)
-
+        try:
+            socket.plug(new)
+        except (pop.PluginError, pop.LackOfFunctionsError, pop.FunctionInterfaceError, pop.VersionError) as e:
+            raise EngineError(str(e))
+            
         # Config editing
         self.config['chosen_plugins'][socket_name] = new
         self.write_config()
@@ -247,7 +250,7 @@ class Session(object):
                 f"Branch '{self.branch.name}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
-        reader = self.access('Lexicon').get_readable
+        reader = lambda x: self.access('Output').get_readable(x, self.access('Lexicon').get_lexem)
         return [reader(i) for i in branch], closed
 
     def jump(self, new: str):

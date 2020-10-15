@@ -138,9 +138,9 @@ def do_plug_list_all(session: engine.Session) -> str:
 def do_plug_gen(session: engine.Session, socket_or_name: str, name: str) -> str:
     try:
         session.plug_gen(socket_or_name, name)
-    except BaseException as e:  # TODO: Sprawdzić wyjątki i zrobić to ładniej
-        logger.error(f"Exception caught: {e}")
-        return f"błąd: {e}"
+    except engine.EngineError as e:
+        logger.error(e)
+        return e
     else:
         return f"Generated plugin {name} from template"
 

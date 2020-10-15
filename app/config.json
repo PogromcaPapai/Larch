@@ -2,6 +2,7 @@
     "chosen_plugins": {
         "UserInterface": "cmd",
         "Lexicon": "basic",
-        "FormalSystem": "zeroth_order_logic"
+        "FormalSystem": "zeroth_order_logic",
+        "Output": "text"
     }
 }
