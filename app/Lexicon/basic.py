@@ -4,7 +4,7 @@ from string import ascii_letters as alphabet
 from functools import lru_cache
 import re
 from functools import reduce
-from __utils__ import *
+import Lexicon as utils
 
 SOCKET = 'Lexicon'
 VERSION = '0.0.1'
@@ -64,7 +64,8 @@ def group_by_value(l: list[tuple[str, str]]) -> dict[str, list[str]]:
 
 def letter_range(regex: str) -> tuple[int, int]:
     """For a regex given in lexicon.variables returns the indexes of first and last letter"""
-    assert regex[1].islower() is regex[3].islower(), "One letter is higher case and one is lower case"
+    assert regex[1].islower() is regex[3].islower(
+    ), "One letter is higher case and one is lower case"
     return alphabet.index(regex[1]), alphabet.index(regex[3])
 
 
@@ -83,34 +84,38 @@ def simplify_lexicon(used_tokens: frozenset[str], defined: frozenset[tuple[str, 
     """Filters out patterns that aren't used, creates a regex pattern at Lexicon.pattern, returns a lexicon object"""
     lack = used_tokens - full_lexicon['types']
     if lack:
-        raise lexicon_utils.CompilerError(
+        raise utils.CompilerError(
             f"Lexicon lacks following types: {', '.join(lack)}")
 
     # Filtering
     filtered_def = list(filter(lambda x: x[1] in used_tokens, defined))
     filtered_keywords = list(filter(lambda x: x[1] in used_tokens, full_lexicon['constants'])) + list(
         filter(lambda x: x[1] in used_tokens, full_lexicon['semantic']))
-    filtered_var = list(filter(lambda x: x[1] in used_tokens, full_lexicon['variables']))
+    filtered_var = list(
+        filter(lambda x: x[1] in used_tokens, full_lexicon['variables']))
 
     # Check for lexicon fullness
     assert len(filtered_keywords) > 0, "No keywords"
-    assert any(filtered_var), "No variables" # Turn off for testing
+    assert any(filtered_var), "No variables"  # Turn off for testing
 
     # Check for duplicates
-    dup_key = [i for i in group_by_value(filtered_keywords).items() if len(i[1]) > 1]
+    dup_key = [i for i in group_by_value(
+        filtered_keywords).items() if len(i[1]) > 1]
     if len(dup_key) > 0:
-        raise lexicon_utils.MultipleTypesError(dup_key)
-    dup_var = [i for i in group_by_value(filtered_keywords).items() if len(i[1]) > 1]
+        raise utils.MultipleTypesError(dup_key)
+    dup_var = [i for i in group_by_value(
+        filtered_keywords).items() if len(i[1]) > 1]
     if len(dup_var) > 0:
-        raise lexicon_utils.MultipleTypesError(dup_var)
+        raise utils.MultipleTypesError(dup_var)
 
     # Prepare data
-    dict_keys = {i[0]: f"<{i[1]}_{i[0]}>" for i in filtered_keywords}
-    dict_def = {i[0]: f"<{i[1]}_{i[0]}>" for i in filtered_def}
-    tup_variables = [(letter_range(i[0]), f"<{i[1]}_+>") for i in filtered_var]
+    dict_keys = {i[0]: f"{i[1]}_{i[0]}" for i in filtered_keywords}
+    dict_def = {i[0]: f"{i[1]}_{i[0]}" for i in filtered_def}
+    tup_variables = [(letter_range(i[0]), i[1]) for i in filtered_var]
 
     # Generate pattern
-    in_pattern = [re.escape(i[0]) for i in filtered_def]+sorted([re.escape(i[0]) for i in filtered_keywords], key=len, reverse=True) + [i[0] for i in filtered_var]
+    in_pattern = [re.escape(i) for i in utils.NON_CONVERTIBLE] + [re.escape(i[0]) for i in filtered_def] + sorted(
+        [re.escape(i[0]) for i in filtered_keywords], key=len, reverse=True) + [i[0] for i in filtered_var]
     pattern = re.compile("|".join(in_pattern))
 
     return Lexicon(pattern=pattern, defined=dict_def, keywords=dict_keys, variables=tup_variables)
@@ -124,12 +129,17 @@ def find_token(string: str, lex: Lexicon) -> str:
     :param lex: Used lexicon object (generate with simplify_lexicon)
     :type lex: Lexicon
     :raises CompilerError: Raised if the string can't be properly tokenized
-    :return: [type]_[string]
+    :return: [type]_[string] or something from NON_CONVERTIBLE
     :rtype: str
     """
+    # Check for NON_CONVERTIBLE
+    if string in utils.NON_CONVERTIBLE:
+        return string
+
     # Check if _ exists in string
     if '_' in string:
-        raise lexicon_utils.CompilerError(f'"{string}" contains "_", which is a reserved sign')
+        raise utils.CompilerError(
+            f'"{string}" contains "_", which is a reserved sign')
 
     # Check defined
     found = lex.defined.get(string, None)
@@ -137,50 +147,68 @@ def find_token(string: str, lex: Lexicon) -> str:
     # Check keywords
     if not found:
         found = lex.keywords.get(string, None)
-        
+
     # Check variables
     if not found:
         for i in lex.variables:
             if check_range(string, i[0][0], i[0][1]):
-                found = i[1].replace('+', string)
+                found = "_".join((i[1], string))
 
     # Raise exception
     if not found:
-        raise lexicon_utils.CompilerError(f'Token not found for "{string}"')
+        raise utils.CompilerError(f'Token not found for "{string}"')
     return found
 
 
-def is_fully_tokenized(sent: lexicon_utils.Sentence) -> bool:
-    return all(("_" in i for i in sent))
+def is_fully_tokenized(sent: utils.Sentence) -> bool:
+    return all((any((j in i for j in ("_", *utils.NON_CONVERTIBLE))) for i in sent))
 
 
-def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> lexicon_utils.Sentence:
+def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> utils.Sentence:
     dictionary = simplify_lexicon(
         frozenset(used_tokens), frozenset(defined.items()))
     sentence = dictionary.pattern.findall(statement)
     sentence = [find_token(lexem, dictionary) for lexem in sentence]
-    
+
     # Formating
     for i in sentence:
         i.replace(" ", "")
-    
+
     # Additional check
-    if is_fully_tokenized(sentence):
-        raise lexicon_utils.CompilerError("System didn't fully tokenize the sentence")
+    if not is_fully_tokenized(sentence):
+        raise utils.CompilerError("System didn't fully tokenize the sentence")
     return sentence
 
 
 def get_lexem(token: str) -> str:
     """Returns the lexem which was used to find the token"""
-    return token.split('_')[-1]
+    if token in utils.NON_CONVERTIBLE:
+        return token
+    else:
+        return token.split('_')[-1]
 
 
 def get_type(token: str) -> str:
     """Returns the type of a token"""
-    return token.split('_')[0]
+    if token in utils.NON_CONVERTIBLE:
+        return token
+    else:
+        return token.split('_')[0]
 
 
-def join_to_string(sentence: lexicon_utils.Sentence) -> str:
+def get_readable(sentence: utils.Sentence) -> str:
+    """Returns the lexem which was used to find the token"""
+    assert isinstance(sentence, list)
+    readable = []
+    for lexem in (get_lexem(i) for i in sentence):
+        if len(lexem) > 1:
+            readable.append(f" {lexem} ")
+        else:
+            readable.append(lexem)
+    return "".join(readable).replace("  ", " ")
+
+
+def join_to_string(sentence: utils.Sentence) -> str:
     """Writes the sentence as a string, where tokens are written as `<[token type]_[lexem]>`"""
     new = []
     for token in sentence:

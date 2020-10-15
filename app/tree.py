@@ -178,7 +178,7 @@ class Tree(object):
         if (to_add := l_statements[1:]):
             self.left.append((to_add,))
         self.right = Tree(
-            r_statements[0], names[0], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
+            r_statements[0], names[-1], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy())
         if (to_add := r_statements[1:]):
             self.right.append((to_add,))
 

@@ -55,7 +55,8 @@ class Session(object):
     ENGINE_VERSION = '0.0.1'
     SOCKETS = ('FormalSystem', 'Lexicon')
 
-    def __init__(self, config_file: str):
+    def __init__(self, session_ID: str, config_file: str):
+        self.id = session_ID
         self.config_name = config_file
         self.read_config()
         self.sockets = {name: pop.Socket(name, os.path.abspath(name), self.ENGINE_VERSION, '__template__.py',
@@ -66,6 +67,9 @@ class Session(object):
         self.defined = {}
         self.proof = None
         self.branch = ""
+
+    def __repr__(self):
+        return self.id
 
     # Plugin manpiulation
 
@@ -144,15 +148,15 @@ class Session(object):
         :raises EngineError: System lacks Lexicon plugin or FormalSystem plugin
         :raises ValueError: Wrong statement syntax
         """
-        # try:
-        tokenized = self.access('Lexicon').tokenize(
+        try:
+            tokenized = self.access('Lexicon').tokenize(
                 statement, self.access('FormalSystem').get_used_types(), self.defined)
-        # except self.access('Lexicon').CompilerError as e:        #TODO: coś wykombinować, aby wychwytywało tylko pewne błędy
-        #     raise EngineError(str(e))
-        problem = self.access('FormalSystem').check_syntax(tokenized)
+        except self.access('Lexicon').utils.CompilerError as e:
+            raise EngineError(str(e))
+        problem = None#self.access('FormalSystem').check_syntax(tokenized)
         if problem:
             logger.warning(f"{statement} is not a valid statement \n{problem}")
-            raise ValueError(f"Syntax error: {problem}")
+            raise EngineError(f"Syntax error: {problem}")
         else:
             tokenized = self.access('FormalSystem').prepare_for_proving(tokenized)
             self.proof = Tree(tokenized, branch_name='A')
@@ -166,9 +170,7 @@ class Session(object):
     @EngineLog
     @DealWithPOP
     def deal_contradiction(self, branch_name: str) -> tp.Union[None, tuple[int]]:
-        """
-        Checks whether there exists a file contradicting with 
-        """
+        """Checks whether a sentence contradicting with the newest one exists"""
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
@@ -245,8 +247,8 @@ class Session(object):
                 f"Branch '{self.branch.name}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
-        getlexem = self.access('Lexicon').get_lexem
-        return [getlexem(i) for i in branch], closed
+        reader = self.access('Lexicon').get_readable
+        return [reader(i) for i in branch], closed
 
     def jump(self, new: str):
         if not self.proof:

@@ -136,7 +136,7 @@ class Socket(object):
             list[str]: List of all plugins in the socket's directory
         """
         plugs = [file[:-3] for file in os.listdir(self.dir) if (
-            file.endswith(".py") and not (file in {f"{self.template}.py", "__utils__.py", "__init__.py"}))]
+            file.endswith(".py") and not (file in {f"{self.template}.py", f"{self.name}.py", "__init__.py"}))]
         return plugs
 
     def unplug(self) -> None:

@@ -13,3 +13,5 @@ class MultipleTypesError(CompilerError):
         super().__init__(msg, *args, **kwargs)
 
 Sentence = tp.NewType("Sentence", list[str])
+
+NON_CONVERTIBLE = ("(", ")")

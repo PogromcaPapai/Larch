@@ -1,5 +1,5 @@
 import typing as tp
-import __utils__ as utils
+import Lexicon as utils
 
 SOCKET = 'Lexicon'
 VERSION = '0.0.1'
@@ -17,4 +17,8 @@ def get_type(token: str) -> str:
 
 def join_to_string(s: utils.Sentence) -> str:
     """Writes the sentence as a string, where tokens are written as `<[token type]_[lexem]>`"""
+    pass
+
+def get_readable(sentence: utils.Sentence) -> str:
+    """Returns the sentence in a readable form"""
     pass

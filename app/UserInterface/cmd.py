@@ -35,7 +35,6 @@ class ParsingError(Exception):
     pass
 
 
-@UIlogged
 def parser(statement: str, _dict: dict) -> list:
     comm = []
     for command_raw in statement.split(';'):
@@ -152,8 +151,6 @@ def do_prove(session: engine.Session, sentence: str) -> str:
         return "A proof would be deleted"
     try:
         session.new_proof(sentence)
-    except ValueError:
-        return "Wrong syntax"
     except engine.EngineError as e:
         return str(e)
     else:
@@ -163,7 +160,8 @@ def do_jump(session: engine.Session, where: str) -> str:
     """Changes the branch, provide with branch name, >/right or left/<"""
     try:
         session.jump({'<':'left', '>':'right'}.get(where, where))
-        return f"Branch changed to {where}"
+        name = {'<':'the left neighbour', '>':'the right neighbour'}.get(where, where)
+        return f"Branch changed to {name}"
     except engine.EngineError as e:
         return str(e)   
 
@@ -271,7 +269,7 @@ def run() -> int:
     Returns:
         int: Exit code; -1 will restart the app
     """
-    session = engine.Session('config.json')
+    session = engine.Session('main', 'config.json')
     ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>'))
     console = ptk.PromptSession(message=lambda: f"{session.branch}~ ", rprompt=lambda: get_rprompt(session), bottom_toolbar=get_toolbar)
     while True:

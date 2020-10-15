@@ -10,21 +10,21 @@ Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
 def Creator(func):
     """Will allow the function to generate new tuple structures"""
     def wrapper(statement, *args, **kwargs):
-        assert isinstance(statement, list), "Tuple structure already exists"
+        assert not isinstance(statement, tuple), "Tuple structure already exists"
         return func(statement, *args, **kwargs)
     return wrapper
 
 def Modifier(func):
     """Will only iterate iterate through existing tuple structures"""
     def wrapper(statement, *args, **kwargs):
-        if isinstance(statement, list):
-            return func(statement[:], *args, **kwargs)
-        else:
-            calculated = tuple([func(s, *args, **kwargs) for i in statement])
+        if isinstance(statement, tuple):
+            calculated = tuple([wrapper(i, *args, **kwargs) for i in statement])
             if any((not i for i in calculated)):
                 return ()
             else:
                 return calculated
+        else:
+            return func(statement[:], *args, **kwargs)
 
     return wrapper
 
@@ -64,7 +64,8 @@ def cleaned(func):
     def wrapper(*args, **kwargs):
         returned = func(*args, **kwargs)
         returned = reduce_brackets(returned)
-        assert all(quick_bracket_check(returned))
+        if returned:
+            assert quick_bracket_check(returned)
         return returned
     return wrapper
 
@@ -87,7 +88,7 @@ def strip_around(statement: Sentence, border_type: str, split: bool) -> Sentence
     if middle is None:
         return ()
     elif split:
-        return ((statement[:middle]), (statement[middle+1:]))
+        return ((statement[:middle],), (statement[middle+1:],))
     else:
         return ((statement[:middle], statement[middle+1:]),)
 

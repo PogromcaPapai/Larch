@@ -1,16 +1,16 @@
 import typing as tp
-from __utils__ import *
+import FormalSystem as utils
 
 SOCKET = 'FormalSystem'
 VERSION = '0.0.1'
 
-def prepare_for_proving(statement: Sentence) -> str:
+def prepare_for_proving(statement: utils.Sentence) -> str:
     pass
 
-def check_contradict(s: Sentence, t:Sentence) -> bool:
+def check_contradict(s: utils.Sentence, t:utils.Sentence) -> bool:
     pass
 
-def check_syntax(tokenized_statement: Sentence) -> tp.Union[str, None]:
+def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
     """Should return string description of the problem in syntax"""
     pass
 
@@ -25,5 +25,5 @@ def get_rules() -> dict[str, str]:
 def get_used_types() -> tuple[str]:
     pass
 
-def use_rule(name: str, tokenized_statement: Sentence) -> tp.Union[tuple[tuple[Sentence]], None]:
+def use_rule(name: str, tokenized_statement: utils.Sentence) -> tp.Union[tuple[tuple[utils.Sentence]], None]:
     pass
