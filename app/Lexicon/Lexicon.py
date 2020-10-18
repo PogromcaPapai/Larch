@@ -2,8 +2,10 @@ import typing as tp
 
 lexicon = None
 
+
 class CompilerError(Exception):
     pass
+
 
 class MultipleTypesError(CompilerError):
 
@@ -11,6 +13,7 @@ class MultipleTypesError(CompilerError):
         lists = [" - ".join((i[0], ", ".join(i[1]))) for i in multiple.items()]
         msg = "\n".join(("Multiple types found for:", *lists))
         super().__init__(msg, *args, **kwargs)
+
 
 Sentence = tp.NewType("Sentence", list[str])
 

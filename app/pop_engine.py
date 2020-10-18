@@ -31,10 +31,11 @@ class Socket(object):
     def clear_cache(cls, amount: int = 0):
         """Clears the plugin cache. Will delete the supplied amount of the oldest plugins if provided with a number"""
         logger.warning("Starting cache clearing")
-        if amount>0:
+        if amount > 0:
             for _ in range(amount):
                 name = cls.cache.popitem(False)[0]
-                logger.info(f"Deleting {name[1]} (from socket {name[0]}) from cache")
+                logger.info(
+                    f"Deleting {name[1]} (from socket {name[0]}) from cache")
         else:
             cls.cache = OrderedDict()
 
@@ -86,12 +87,11 @@ class Socket(object):
         else:
             raise PluginError(f"{self.name} lacks a plugin")
 
-
     # Get functions
 
     def get_plugin_name(self):
         return self.__call__().__name__
-    
+
     def isplugged(self):
         return bool(self.plug)
 
@@ -129,7 +129,8 @@ class Socket(object):
 
     def unplug(self) -> None:
         """Unplugs the current plugin, not recommended"""
-        logger.warning(f"{self.get_plugin_name()} disconnected from {self.name}")
+        logger.warning(
+            f"{self.get_plugin_name()} disconnected from {self.name}")
         self.plug = None
 
     def plug(self, plugin_name: str) -> None:
@@ -285,7 +286,6 @@ class Socket(object):
             self.template = None
             self.functions = template
         self.func_names = self.functions.keys()
-        
 
     def _get_functions_from_template(self, template_file_name: str) -> dict[str, tuple[tuple[tp.Any], tp.Any]]:
         # Verification

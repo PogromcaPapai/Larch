@@ -4,6 +4,7 @@ import Output as utils
 SOCKET = 'Output'
 VERSION = '0.0.1'
 
+
 def get_readable(sentence: utils.Sentence, lexem_parser: callable) -> str:
     """Returns a readable version of the sentence
 

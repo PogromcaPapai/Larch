@@ -9,6 +9,7 @@ import Lexicon as utils
 SOCKET = 'Lexicon'
 VERSION = '0.0.1'
 
+TESTING = False
 
 full_lexicon = dict(
     constants=(
@@ -96,7 +97,7 @@ def simplify_lexicon(used_tokens: frozenset[str], defined: frozenset[tuple[str, 
 
     # Check for lexicon fullness
     assert len(filtered_keywords) > 0, "No keywords"
-    assert any(filtered_var), "No variables"  # Turn off for testing
+    assert any(filtered_var) or TESTING, "No variables"  # Turn off for testing
 
     # Check for duplicates
     dup_key = [i for i in group_by_value(
@@ -195,11 +196,12 @@ def get_type(token: str) -> str:
     else:
         return token.split('_')[0]
 
+
 def join_to_string(sentence: utils.Sentence) -> str:
     """Writes the sentence as a string, where tokens are written as `<[token type]_[lexem]>`"""
     new = []
     for token in sentence:
-        if token in ('(', ')'):
+        if token in utils.NON_CONVERTIBLE:
             new.append(token)
         else:
             new.append(f"<{token}>")

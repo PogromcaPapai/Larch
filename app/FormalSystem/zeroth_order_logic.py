@@ -11,38 +11,39 @@ VERSION = '0.0.1'
 USED_TYPES = ('and', 'or', 'imp', 'not', 'sentvar')
 
 
-RULES = { #TODO: Add implication rules
+RULES = {  # TODO: Add implication rules
     'true and': utils.Rule(
         symbolic="A and B / A; B",
         docs="",
         func=lambda x: utils.strip_around(x, 'and', False),
-        reusable = True
+        reusable=True
     ),
     'false and': utils.Rule(
         symbolic="~(A and B) / ~A | ~B",
         docs="",
         func=lambda x: utils.add_prefix(utils.strip_around(
-            utils.reduce_prefix(x, 'not'), 'and', True), 'not', '~'),
-        reusable = False
+            utils.reduce_prefix(x, 'not', ('not')), 'and', True), 'not', '~'),
+        reusable=False
     ),
     'false or': utils.Rule(
         symbolic="~(A or B) / ~A; ~B",
         docs="",
         func=lambda x: utils.add_prefix(utils.strip_around(
-            utils.reduce_prefix(x, 'not'), 'or', False), 'not', '~'),
-        reusable = True
+            utils.reduce_prefix(x, 'not', ('not')), 'or', False), 'not', '~'),
+        reusable=True
     ),
     'true or': utils.Rule(
         symbolic="(A or B) / A | B",
         docs="",
         func=lambda x: utils.strip_around(x, 'or', True),
-        reusable = False
+        reusable=False
     ),
     'double not': utils.Rule(
         symbolic="~~A / A",
         docs="",
-        func=lambda x: tuple([utils.reduce_prefix(utils.reduce_prefix(x, 'not'), 'not')]),
-        reusable = True
+        func=lambda x: utils.reduce_prefix(
+            utils.reduce_prefix(utils.empty_creator(x), 'not', ('not')), 'not', ('not')),
+        reusable=True
     )
 }
 

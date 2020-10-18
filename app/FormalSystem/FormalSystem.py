@@ -7,18 +7,22 @@ Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
 
 # Rule decorators
 
+
 def Creator(func):
     """Will allow the function to generate new tuple structures"""
     def wrapper(statement, *args, **kwargs):
-        assert not isinstance(statement, tuple), "Tuple structure already exists"
+        assert not isinstance(
+            statement, tuple), "Tuple structure already exists"
         return func(statement, *args, **kwargs)
     return wrapper
+
 
 def Modifier(func):
     """Will only iterate iterate through existing tuple structures"""
     def wrapper(statement, *args, **kwargs):
         if isinstance(statement, tuple):
-            calculated = tuple([wrapper(i, *args, **kwargs) for i in statement])
+            calculated = tuple([wrapper(i, *args, **kwargs)
+                                for i in statement])
             if any((not i for i in calculated)):
                 return ()
             else:
@@ -30,19 +34,25 @@ def Modifier(func):
 
 # Formating and cleaning
 
+
 @Modifier
 def reduce_brackets(statement: Sentence) -> Sentence:
     assert isinstance(statement, list)
 
+    if statement == []:
+        return []
+
+    reduced = statement[:]
+
     # Deleting brackets
-    while statement[0]=='(' and statement[-1]==')': 
-        statement = statement[1:-1]
+    while reduced[0] == '(' and reduced[-1] == ')':
+        reduced = reduced[1:-1]
 
     # Check bracket
     opened_left = 0
     opened_right = 0
     min_left = 0
-    for i in statement:
+    for i in reduced:
         if i == '(':
             opened_left += 1
         elif i == ')':
@@ -52,13 +62,15 @@ def reduce_brackets(statement: Sentence) -> Sentence:
         delta_left = opened_left-opened_right
         if min_left > delta_left:
             min_left = delta_left
-    
+
     right = opened_left-opened_right-min_left
-    return -min_left*["("] + statement + right*[")"]
+    return -min_left*["("] + reduced + right*[")"]
+
 
 @Modifier
-def quick_bracket_check(statement: Sentence):
-    return statement.count('(')==statement.count(')')
+def quick_bracket_check(reduced: Sentence):
+    return reduced.count('(') == reduced.count(')')
+
 
 def cleaned(func):
     def wrapper(*args, **kwargs):
@@ -70,6 +82,13 @@ def cleaned(func):
     return wrapper
 
 # Useful functions for creating rules
+
+
+@Creator
+def empty_creator(statement: Sentence):
+    """Doesn't do nothing; Use when no Creator has been used to generate a tuple structure"""
+    return ((statement,),)
+
 
 @cleaned
 @Creator
@@ -95,28 +114,38 @@ def strip_around(statement: Sentence, border_type: str, split: bool) -> Sentence
 
 @cleaned
 @Modifier
-def reduce_prefix(statement: Sentence, prefix_type: str) -> Sentence:
+def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
+    assert isinstance(statement, list)
+
     if statement[0].startswith(prefix_type):
-        if len(statement)<=2:
-            return statement[1:]
+        start = 1
+        while any((statement[start].startswith(i) for i in prefixes)):
+            start += 1
+        statement_no_prefix = statement[start:]
+
+        if len(statement_no_prefix) == 1:
+            return reduce_brackets(statement[1:])
         else:
-            reduction = reduce_brackets(statement[1:])
-            if reduction.count("(")==statement[1:].count("("):
-                return ()
-            elif reduction.count("(")<statement[1:].count("("):
-                return reduction
+            reduction = reduce_brackets(statement_no_prefix)
+            if reduction.count("(") == statement_no_prefix.count("("):
+                return []
+            elif reduction.count("(") < statement_no_prefix.count("("):
+                return reduce_brackets(statement[1:])
             else:
-                raise Exception("After bracket reduction the statement gained a bracket")
+                raise Exception(
+                    "After bracket reduction the statement_no_prefix gained a bracket")
     else:
-        return ()
+        return []
+
 
 @Modifier
-def split_filter(statement: Sentence, splitter: int, func_left = lambda x: x, func_right = lambda x: x):
+def split_filter(statement: Sentence, splitter: int, func_left=lambda x: x, func_right=lambda x: x):
     return [func_left(i) for i in statement[:splitter]]+[func_right(i) for i in statement[splitter:]]
+
 
 @Modifier
 def add_prefix(statement: Sentence, prefix: str, symbol: str) -> Sentence:
-    if len(statement)==1:
+    if len(statement) == 1:
         return [f"{prefix}_{symbol}", *statement]
     else:
         return [f"{prefix}_{symbol}", '(', *statement, ')']

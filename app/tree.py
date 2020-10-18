@@ -68,7 +68,8 @@ class Tree(object):
     def gen_name(self) -> tuple[str]:
         """Generates two possible names for the children of this node"""
         if self.parent:
-            dist = self._distalph(self.name, self.parent.getchildren(0).name) + self._distalph(self.name, self.parent.getchildren(-1).name)
+            dist = self._distalph(self.name, self.parent.getchildren(
+                0).name) + self._distalph(self.name, self.parent.getchildren(-1).name)
             assert dist != 0
             new = abs(dist)//2
             if dist < 0:
@@ -132,7 +133,7 @@ class Tree(object):
 
     def getbranch_neighbour(self, left_right: str):
         """Return left/right neighbour of the branch
-        
+
         :param left_right: 'L/Left' or 'R/Right'
         :type left_right: str
         :raises TreeError: left_right is not a valid direction
@@ -157,12 +158,12 @@ class Tree(object):
                     min_dist = dist
                     obj_w_min = i[1]
             return obj_w_min
-        
+
         else:
             raise TreeError(f"'{left_right}' is not a valid direction")
             return None
 
-    def getnode_neighbour(self, left_right: str) -> tp.Union[Tree]: 
+    def getnode_neighbour(self, left_right: str) -> tp.Union[Tree]:
         """Return left/right neighbour of the node 
 
         :param left_right: 'L/Left' or 'R/Right'
@@ -182,7 +183,7 @@ class Tree(object):
             index -= 1
         else:
             raise TreeError(f"'{left_right}' is not a valid direction")
-        
+
         # Get neighbour
         if index >= len(self.parent.getchildren()) or index < 0:
             if (parent_neigh := self.parent.getnode_neighbour(left_right)):
@@ -194,7 +195,6 @@ class Tree(object):
                 return None
         else:
             return self.parent.getchildren(index)
-            
 
     # Tree modification
 
@@ -211,7 +211,7 @@ class Tree(object):
         names = self.gen_name()
         for i, sentence in enumerate(statements):
             self.children.append(Tree(
-            sentence[0], names[i], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy()))
+                sentence[0], names[i], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy()))
             if (to_add := sentence[1:]):
                 self.children[-1].append((to_add,))
 
