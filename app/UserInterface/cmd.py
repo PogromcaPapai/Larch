@@ -35,7 +35,6 @@ class ParsingError(Exception):
     pass
 
 
-@UIlogged
 def parser(statement: str, _dict: dict) -> list:
     comm = []
     for command_raw in statement.split(';'):
@@ -65,7 +64,7 @@ def parser(statement: str, _dict: dict) -> list:
         if func['args'] == 'multiple_strings':
             # mechanism for prove
             converted = command[len(name):].strip()
-            if len(converted)==0:
+            if len(converted) == 0:
                 raise ParsingError("More arguments needed")
         else:
             # mechanism for other types
@@ -86,7 +85,7 @@ def parser(statement: str, _dict: dict) -> list:
 
 
 @UIlogged
-def performer(command: tp.Dict[str, tp.Any], session: engine.Session) -> str:
+def performer(command: dict[str, tp.Any], session: engine.Session) -> str:
     if 'docs' in command.keys():
         return command['docs']
     else:
@@ -139,9 +138,9 @@ def do_plug_list_all(session: engine.Session) -> str:
 def do_plug_gen(session: engine.Session, socket_or_name: str, name: str) -> str:
     try:
         session.plug_gen(socket_or_name, name)
-    except BaseException as e:  # TODO: Sprawdzić wyjątki i zrobić to ładniej
-        logger.error(f"Exception caught: {e}")
-        return f"błąd: {e}"
+    except engine.EngineError as e:
+        logger.error(e)
+        return e
     else:
         return f"Generated plugin {name} from template"
 
@@ -152,24 +151,27 @@ def do_prove(session: engine.Session, sentence: str) -> str:
         return "A proof would be deleted"
     try:
         session.new_proof(sentence)
-    except ValueError:
-        return "Wrong syntax"
     except engine.EngineError as e:
         return str(e)
     else:
         return "Sentence tokenized successfully \nProof initialized"
 
+
 def do_jump(session: engine.Session, where: str) -> str:
     """Changes the branch, provide with branch name, >/right or left/<"""
     try:
-        session.jump({'<':'left', '>':'right'}.get(where, where))
-        return f"Branch changed to {where}"
+        session.jump({'<': 'left', '>': 'right'}.get(where, where))
+        name = {'<': 'the left neighbour',
+                '>': 'the right neighbour'}.get(where, where)
+        return f"Branch changed to {name}"
     except engine.EngineError as e:
-        return str(e)   
+        return str(e)
+
 
 def do_leave(session) -> str:
     session.reset_proof()
     return "Proof was deleted"
+
 
 def do_use(session, name1: str, name2: str, statement: int) -> str:
     out = []
@@ -179,21 +181,29 @@ def do_use(session, name1: str, name2: str, statement: int) -> str:
     try:
         val = session.use_rule(name, statement)
     except engine.EngineError as e:
-        return str(e)   
+        return str(e)
     if val:
         out.append(f"Used '{name}' successfully")
-        
-        # Contradiction detection and handling
-        for branch in val:
-            cont = session.deal_contradiction(branch)
-            if cont:
-                out.append(f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed.")
-            else:
-                out.append(f"No contradictions found on branch {branch}.")
+
+        # Contradiction handling
+        for i in val:
+            out.append(do_contra(session, i))
+
     else:
         out.append("Rule couldn't be used")
 
     return "\n".join(out)
+
+
+def do_contra(session, branch: str, ):
+    """
+    Detects contradictions and handles them by closing their branches
+    """
+    cont = session.deal_contradiction(branch)
+    if cont:
+        return f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed."
+    else:
+        return f"No contradictions found on branch {branch}."
 
 
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
@@ -206,7 +216,8 @@ command_dict = OrderedDict({
     'clear': {'comm': do_clear, 'args': [], 'add_docs': ''},
     # Navigation
     'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
-    'leave': {'comm': do_leave, 'args': [], 'add_docs': ''},  # Porzuca nieskończony dowód
+    # Porzuca nieskończony dowód
+    'leave': {'comm': do_leave, 'args': [], 'add_docs': ''},
     'prove': {'comm': do_prove, 'args': 'multiple_strings', 'add_docs': ''},
     'get always': {},
     'get branch': {},
@@ -215,10 +226,7 @@ command_dict = OrderedDict({
     'next': {},  # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
     # Proof manipulation
     'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
-    'auto always': {},
-    'auto': {},
-    'use': {'comm':do_use, 'args': [str, str, int], 'add_docs': ''},
-    'contra': {'comm':do_use, 'args': [], 'add_docs': ''},
+    'use': {'comm': do_use, 'args': [str, str, int], 'add_docs': ''},
 })
 
 
@@ -248,12 +256,14 @@ def get_rprompt(session):
     for i in range(len(prompt)):
         spaces = max_len-len(prompt[i])-int(log10(i+1))
         to_show.append("".join((str(i+1), ". ", prompt[i], " "*spaces)))
+
+    # Adding branch closing symbol
     if closed:
         s = f"XXX ({closed[0]+1}, {closed[1]+1})"
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
+
     new = " \n ".join(to_show)
-    
     return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {escape(new)} </style>')
 
 
@@ -271,9 +281,10 @@ def run() -> int:
     Returns:
         int: Exit code; -1 will restart the app
     """
-    session = engine.Session('config.json')
+    session = engine.Session('main', 'config.json')
     ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>'))
-    console = ptk.PromptSession(message=lambda: f"{session.branch}~ ", rprompt=lambda: get_rprompt(session), bottom_toolbar=get_toolbar)
+    console = ptk.PromptSession(message=lambda: f"{session.branch}~ ", rprompt=lambda: get_rprompt(
+        session), bottom_toolbar=get_toolbar)
     while True:
         command = console.prompt()
         logger.info(f"Got a command: {command}")
