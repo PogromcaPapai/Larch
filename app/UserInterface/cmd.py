@@ -181,17 +181,24 @@ def do_use(session, name1: str, name2: str, statement: int) -> str:
     if val:
         out.append(f"Used '{name}' successfully")
         
-        # Contradiction detection and handling
-        for branch in val:
-            cont = session.deal_contradiction(branch)
-            if cont:
-                out.append(f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed.")
-            else:
-                out.append(f"No contradictions found on branch {branch}.")
+        # Contradiction handling
+        for i in val:
+            out.append(do_contra(session, i))
+        
     else:
         out.append("Rule couldn't be used")
 
     return "\n".join(out)
+
+def do_contra(session, branch: str, ):
+    """
+    Detects contradictions and handles them by closing their branches
+    """
+    cont = session.deal_contradiction(branch)
+    if cont:
+        return f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed."
+    else:
+        return f"No contradictions found on branch {branch}." 
 
 
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
@@ -213,10 +220,7 @@ command_dict = OrderedDict({
     'next': {},  # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
     # Proof manipulation
     'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
-    'auto always': {},
-    'auto': {},
     'use': {'comm':do_use, 'args': [str, str, int], 'add_docs': ''},
-    'contra': {'comm':do_use, 'args': [], 'add_docs': ''},
 })
 
 
@@ -246,12 +250,14 @@ def get_rprompt(session):
     for i in range(len(prompt)):
         spaces = max_len-len(prompt[i])-int(log10(i+1))
         to_show.append("".join((str(i+1), ". ", prompt[i], " "*spaces)))
+
+    # Adding branch closing symbol
     if closed:
         s = f"XXX ({closed[0]+1}, {closed[1]+1})"
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
-    new = " \n ".join(to_show)
     
+    new = " \n ".join(to_show)
     return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {escape(new)} </style>')
 
 

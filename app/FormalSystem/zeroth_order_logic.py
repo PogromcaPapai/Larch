@@ -63,7 +63,7 @@ def check_contradict(statement_1: utils.Sentence, statement_2: utils.Sentence) -
         negated, statement = statement_2, statement_1
     else:
         return False
-    return reduce_brackets(negated[1:]) == statement
+    return utils.reduce_brackets(negated[1:]) == statement
 
 
 def check_syntax(sentence: utils.Sentence) -> tp.Union[str, None]:

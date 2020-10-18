@@ -33,7 +33,7 @@ def EngineChangeLog(func):
     return new
 
 def DealWithPOP(func):
-    """A decorator which convert all PluginErrors to EngineErrors for simpler handling"""
+    """A decorator which convert all PluginErrors to EngineErrors for simpler handling in the UI socket"""
     def new(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -111,6 +111,7 @@ class Session(object):
         self.config['chosen_plugins'][socket_name] = new
         self.write_config()
 
+
     def plug_list(self, socket: str) -> list:
 
         sock = self.sockets.get(socket, None)
@@ -174,6 +175,7 @@ class Session(object):
     @DealWithPOP
     def deal_contradiction(self, branch_name: str) -> tp.Union[None, tuple[int]]:
         """Checks whether a sentence contradicting with the newest one exists"""
+        # Tests
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
@@ -186,14 +188,15 @@ class Session(object):
                     "Proof too short to check for contradictions")
             else:
                 raise e
-
+        
+        # Branch checking
         last = branch[-1]
         for num, sent in enumerate(branch[:-1]):
             if self.access('FormalSystem').check_contradict(sent, last):
                 EngineError(
                     f"Found a contradiction at ({num}, {len(branch)-1})")
                 self.proof.getleaves(branch_name)[0].close(
-                    num, num_self=len(branch)-1)
+                    num, len(branch)-1)
                 return num, len(branch)-1
         return None
 
@@ -201,7 +204,7 @@ class Session(object):
     @DealWithPOP
     def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tuple[str]]:
 
-        # Technical tests
+        # Tests
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
@@ -258,7 +261,7 @@ class Session(object):
             raise EngineError("There is no proof started")
         new = new.upper()
         if new in ('LEFT', 'RIGHT'):
-            changed = self.proof.leaves[self.branch].getneighbour(new)
+            changed = self.proof.leaves[self.branch].getbranch_neighbour(new)
             if changed is None:
                 raise EngineError(f"There is no branch on the {new.lower()}")
             else:

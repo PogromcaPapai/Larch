@@ -28,10 +28,8 @@ class Socket(object):
     cache = OrderedDict()
 
     @classmethod
-    def clear_cache(cls, amount=0):
-        """
-        docstring
-        """
+    def clear_cache(cls, amount: int = 0):
+        """Clears the plugin cache. Will delete the supplied amount of the oldest plugins if provided with a number"""
         logger.warning("Starting cache clearing")
         if amount>0:
             for _ in range(amount):
@@ -48,9 +46,10 @@ class Socket(object):
         Args:
             socket_name (str): Name given to the socket, will be used to identify plugins
             abs_path (str): Absolute path to the directory with plugins; use `<> test <>` for testing
-            version (str): Version of the socket, will be checked with sockets. Supported format: "x.x.z", changes on "z level" will be omitted in version checking
-            template (str OR dict[str, tuple[tuple[tp.Any], tp.Any]]): Used as a reference in interface verification. When supplied with file name system 
-                                                                                will use it to generate templates. `gen_functionDS` generates the primitive version.
+            version (str): Version of the socket, will be checked with sockets. Supported format: "x.x.z". 
+                Changes on "z level" will be omitted in version checking
+            template (str OR dict[str, tuple[tuple[tp.Any], tp.Any]]): Used as a reference in interface verification. 
+                When supplied with file name system will use it to generate templates. `gen_functionDS` generates the primitive version.
             plugged (str, optional): Name of a plugin which will be connected. Defaults to "".
         """
         # Plugin's directory
@@ -64,21 +63,10 @@ class Socket(object):
         self.version = [int(i) for i in version.split('.')]
         assert len(self.version) == 3, "Wrong version format"
 
-        # Misc
         self.name = socket_name
-        if isinstance(template, str):
-            if template.endswith(".py"):
-                template = template[:-3]
-            if not os.path.isfile(f"{abs_path}\\{template}.py"):
-                raise FileNotFoundError(
-                    f"{template}.py doesn't exist in {abs_path}")
-            else:
-                self.template = template
-                self.functions = self._get_functions_from_template(template)
-        else:
-            self.template = None
-            self.functions = template
-        self.func_names = self.functions.keys()
+        self.read_template(template)
+
+        # Plugging
         if not plugged:
             self.plugin = None
         else:
@@ -279,6 +267,25 @@ class Socket(object):
         else:
             return True
             logger.debug(f"{func.__name__} compatible")
+
+    def read_template(self, template: tp.Union[str, dict[str, tuple[tuple[tp.Any], tp.Any]]]):
+        """
+        Reads/Retrieves a template and modifies the shape of the socket according to the objects given in the template
+        """
+        if isinstance(template, str):
+            if template.endswith(".py"):
+                template = template[:-3]
+            if not os.path.isfile(f"{self.dir}\\{template}.py"):
+                raise FileNotFoundError(
+                    f"{template}.py doesn't exist in {self.dir}")
+            else:
+                self.template = template
+                self.functions = self._get_functions_from_template(template)
+        else:
+            self.template = None
+            self.functions = template
+        self.func_names = self.functions.keys()
+        
 
     def _get_functions_from_template(self, template_file_name: str) -> dict[str, tuple[tuple[tp.Any], tp.Any]]:
         # Verification

@@ -102,13 +102,13 @@ def reduce_prefix(statement: Sentence, prefix_type: str) -> Sentence:
         else:
             reduction = reduce_brackets(statement[1:])
             if reduction.count("(")==statement[1:].count("("):
-                return []
+                return ()
             elif reduction.count("(")<statement[1:].count("("):
                 return reduction
             else:
                 raise Exception("After bracket reduction the statement gained a bracket")
     else:
-        return []
+        return ()
 
 @Modifier
 def split_filter(statement: Sentence, splitter: int, func_left = lambda x: x, func_right = lambda x: x):

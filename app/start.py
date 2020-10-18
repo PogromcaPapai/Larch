@@ -18,6 +18,8 @@ import pop_engine as pop
 # For now just do what you can to avoid this.
 
 if __name__ == "__main__":
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    
     # Log clearing
     if os.path.exists('log.log'):
         os.remove('log.log')
