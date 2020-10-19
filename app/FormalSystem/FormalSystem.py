@@ -139,13 +139,34 @@ def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -
 
 
 @Modifier
-def split_filter(statement: Sentence, splitter: int, func_left=lambda x: x, func_right=lambda x: x):
-    return [func_left(i) for i in statement[:splitter]]+[func_right(i) for i in statement[splitter:]]
-
-
-@Modifier
 def add_prefix(statement: Sentence, prefix: str, symbol: str) -> Sentence:
     if len(statement) == 1:
         return [f"{prefix}_{symbol}", *statement]
     else:
         return [f"{prefix}_{symbol}", '(', *statement, ')']
+
+
+def filter(tuple_structure: tuple[tuple[Sentence]], which: tuple[tuple[True]], func: callable) -> tuple[tuple[Sentence]]:
+
+    # Tests
+    if not tuple_structure:
+        return ()
+    assert len(tuple_structure)==len(which)
+    assert all((len(tuple_structure[i])==len(which[i]) for i in range(len(which))))
+
+    # Execution
+    return _filter(tuple_structure, which, func)
+
+
+def _filter(filtered, which, func: callable) -> tuple[tuple[Sentence]]:
+    after = []
+
+    for s, use in zip(to_split, which):
+        if isinstance(use, bool):
+            if use:
+                after.append(func(s))
+            else:
+                after.append(s)
+        else:
+            after.append(_filter(s, use, func))
+    return tuple(after)
