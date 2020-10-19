@@ -3,7 +3,7 @@ import os
 import sys
 import typing as tp
 from math import log10
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from xml.sax.saxutils import escape
 
 import prompt_toolkit as ptk
@@ -34,8 +34,21 @@ def UIlogged(func):
 class ParsingError(Exception):
     pass
 
+Command = namedtuple('Command', ('func', 'args', 'docs'))
 
-def parser(statement: str, _dict: dict) -> list:
+def parser(statement: str, _dict: dict) -> list[Command]:
+    """Parses the statement into a list of commands to execute
+
+    :param statement: parsed command
+    :type statement: str
+    :param _dict: Command dict
+    :type _dict: dict
+    :raises ParsingError: Wrong amount of arguments
+    :raises ParsingError: Command not found in `_dict`
+    :raises TypeError: Wrong argument type
+    :return: List of commands to execute
+    :rtype: list[Command]
+    """
     comm = []
     for command_raw in statement.split(';'):
         # Function parsing
@@ -57,7 +70,7 @@ def parser(statement: str, _dict: dict) -> list:
                     (f"Help for '{name}':", func['add_docs'], func['comm'].__doc__))
             else:
                 doc = func['add_docs']
-            comm.append({'func': func['comm'], 'docs': doc})
+            comm.append(Command(func['comm'], None, doc))
             continue
 
         # Argument conversion
@@ -80,19 +93,20 @@ def parser(statement: str, _dict: dict) -> list:
                     raise TypeError("Wrong argument type")
                 converted.append(new)
 
-        comm.append({'func': func['comm'], 'args': converted})
+        comm.append(Command(func['comm'], converted, None))
     return comm
 
 
 @UIlogged
-def performer(command: dict[str, tp.Any], session: engine.Session) -> str:
-    if 'docs' in command.keys():
-        return command['docs']
+def performer(command: Command, session: engine.Session) -> str:
+    """Performs the command on the session"""
+    if command.docs:
+        return command.docs
     else:
-        if isinstance(command['args'], str):
-            return command['func'](session, command['args'])
+        if isinstance(command.args, str):
+            return command.func(session, command.args)
         else:
-            return command['func'](session, *command['args'])
+            return command.func(session, *command.args)
 
 
 # Commands
@@ -109,8 +123,16 @@ def do_exit(session: engine.Session):
     sys.exit(0)
 
 
+# Plugin manipulation
+
+
 def do_plug_switch(session: engine.Session, socket_or_name: str, new: str) -> str:
-    """Allows to plug in a script to a socket"""
+    """Allows to plug in a plugin to a socket
+    
+    Arguments:
+        - Socket/Old plugin name [str]
+        - New plugin's name [str]
+    """
     try:
         session.plug_switch(socket_or_name, new)
     except BaseException as e:  # TODO: Sprawdzić wyjątki i zrobić to ładniej
@@ -121,13 +143,17 @@ def do_plug_switch(session: engine.Session, socket_or_name: str, new: str) -> st
 
 
 def do_plug_list(session: engine.Session, socket: str) -> str:
-    """Lists all the plugins that can be connected to a socket"""
+    """Lists all the plugins that can be connected to a socket
+    
+    Arguments:
+        - Socket name [str]
+    """
     plugins = "; ".join(session.plug_list(socket))
     return f"Plugins available locally for {socket}:\n{plugins}"
 
 
 def do_plug_list_all(session: engine.Session) -> str:
-    """Lists all the plugins that can be connected to a socket"""
+    """Lists all the plugins that can be connected to all of the Sockets"""
     strings = []
     for i in session.get_socket_names():
         plugins = "; ".join(session.plug_list(i))
@@ -135,9 +161,15 @@ def do_plug_list_all(session: engine.Session) -> str:
     return "\n\n".join(strings)
 
 
-def do_plug_gen(session: engine.Session, socket_or_name: str, name: str) -> str:
+def do_plug_gen(session: engine.Session, socket: str, name: str) -> str:
+    """Generates an empty plugin
+
+    Arguments:
+        - Socket name [str]
+        - Plugin name [str]
+    """
     try:
-        session.plug_gen(socket_or_name, name)
+        session.plug_gen(socket, name)
     except engine.EngineError as e:
         logger.error(e)
         return e
@@ -145,8 +177,15 @@ def do_plug_gen(session: engine.Session, socket_or_name: str, name: str) -> str:
         return f"Generated plugin {name} from template"
 
 
+# Proof manipulation
+
+
 def do_prove(session: engine.Session, sentence: str) -> str:
-    """Initiates a new proof, needs to be provided with the proved sentence"""
+    """Initiates a new proof
+
+    Arguments:
+        - Sentence to prove [str]
+    """
     if session.proof:
         return "A proof would be deleted"
     try:
@@ -157,23 +196,13 @@ def do_prove(session: engine.Session, sentence: str) -> str:
         return "Sentence tokenized successfully \nProof initialized"
 
 
-def do_jump(session: engine.Session, where: str) -> str:
-    """Changes the branch, provide with branch name, >/right or left/<"""
-    try:
-        session.jump({'<': 'left', '>': 'right'}.get(where, where))
-        name = {'<': 'the left neighbour',
-                '>': 'the right neighbour'}.get(where, where)
-        return f"Branch changed to {name}"
-    except engine.EngineError as e:
-        return str(e)
-
-
-def do_leave(session) -> str:
-    session.reset_proof()
-    return "Proof was deleted"
-
-
 def do_use(session, name1: str, name2: str, statement: int) -> str:
+    """Uses a rule in the proof
+
+    Arguments:
+        - Rule name [str]
+        - ID of the statement to use the rule on [int]
+    """
     out = []
 
     # Rule usage
@@ -195,15 +224,38 @@ def do_use(session, name1: str, name2: str, statement: int) -> str:
     return "\n".join(out)
 
 
-def do_contra(session, branch: str, ):
-    """
-    Detects contradictions and handles them by closing their branches
-    """
+def do_contra(session, branch: str):
+    """Detects contradictions and handles them by closing their branches"""
     cont = session.deal_contradiction(branch)
     if cont:
         return f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed."
     else:
         return f"No contradictions found on branch {branch}."
+
+
+def do_leave(session) -> str:
+    """Resets the proof"""
+    session.reset_proof()
+    return "Proof was deleted"
+
+
+# Proof navigation
+
+
+def do_jump(session: engine.Session, where: str) -> str:
+    """Changes the branch, 
+    
+    Arguments:
+        - Branch name [str/">"/"right"/"left"/"<"]
+    """
+    try:
+        session.jump({'<': 'left', '>': 'right'}.get(where, where))
+        name = {'<': 'the left neighbour',
+                '>': 'the right neighbour'}.get(where, where)
+        return f"Branch changed to {name}"
+    except engine.EngineError as e:
+        return str(e)
+
 
 
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
@@ -216,9 +268,7 @@ command_dict = OrderedDict({
     'clear': {'comm': do_clear, 'args': [], 'add_docs': ''},
     # Navigation
     'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
-    # Porzuca nieskończony dowód
-    'leave': {'comm': do_leave, 'args': [], 'add_docs': ''},
-    'prove': {'comm': do_prove, 'args': 'multiple_strings', 'add_docs': ''},
+    'get rules': {},
     'get always': {},
     'get branch': {},
     'get tree': {},
@@ -227,6 +277,8 @@ command_dict = OrderedDict({
     # Proof manipulation
     'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
     'use': {'comm': do_use, 'args': [str, str, int], 'add_docs': ''},
+    'leave': {'comm': do_leave, 'args': [], 'add_docs': ''},
+    'prove': {'comm': do_prove, 'args': 'multiple_strings', 'add_docs': ''},
 })
 
 
@@ -241,6 +293,7 @@ command_dict['?'] = {'comm': do_help, 'args': [], 'add_docs': ''}
 # Front-end setup
 
 def get_rprompt(session):
+    """Generates the branch preview in the bottom right corner"""
     DEF_PROMPT = "Miejsce na twój dowód".split()
 
     # Proof retrieval

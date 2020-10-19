@@ -169,7 +169,7 @@ class Socket(object):
         logger.warning(f"{plugin_name} connected to {self.name}")
 
     def _import(self, plugin_name: str) -> Module:
-        """Imports a module of the given plugin_name and returns it; USE PLUG INSTEAD"""
+        """Imports a module named `plugin_name` from `self.dir`; USE PLUG INSTEAD"""
         module = self.cache.get((self.name, plugin_name), None)
         if module:
             self.cache.move_to_end((self.name, plugin_name))
@@ -276,7 +276,7 @@ class Socket(object):
         if isinstance(template, str):
             if template.endswith(".py"):
                 template = template[:-3]
-            if not os.path.isfile(f"{self.dir}\\{template}.py"):
+            if not os.path.isfile(f"{self.dir}/{template}.py"):
                 raise FileNotFoundError(
                     f"{template}.py doesn't exist in {self.dir}")
             else:
@@ -288,6 +288,14 @@ class Socket(object):
         self.func_names = self.functions.keys()
 
     def _get_functions_from_template(self, template_file_name: str) -> dict[str, tuple[tuple[tp.Any], tp.Any]]:
+        """Generates information about function annotations of a template 
+
+        :param template_file_name: Name of the template file
+        :type template_file_name: str
+        :return: {function name:((*argument types), return type)}
+        :rtype: dict[str, tuple[tuple[tp.Any], tp.Any]]
+        """
+
         # Verification
         template = self._import(template_file_name)
         self.check_version(

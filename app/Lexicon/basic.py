@@ -166,18 +166,30 @@ def is_fully_tokenized(sent: utils.Sentence) -> bool:
 
 
 def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> utils.Sentence:
-    dictionary = simplify_lexicon(
-        frozenset(used_tokens), frozenset(defined.items()))
+    """Transforms the sentence into a list of tokens in the form of `type_lexem`
+
+    :param statement: The statement to tokenize
+    :type statement: str
+    :param used_tokens: List of tokens used in this formal system (`FormalSystem.get_used_types`)
+    :type used_tokens: tp.Iterable[str]
+    :param defined: Variables defined by the user, defaults to dict()
+    :type defined: dict[str, str], optional
+    :raises CompilerError: The sentence wasn't tokenized 
+    :return: Tokenized statement
+    :rtype: utils.Sentence
+    """
+
+    # Getting the lexicon 
+    dictionary = simplify_lexicon(frozenset(used_tokens), frozenset(defined.items()))
+    
+    # Find and get tokens
     sentence = dictionary.pattern.findall(statement)
     sentence = [find_token(lexem, dictionary) for lexem in sentence]
-
-    # Formating
-    for i in sentence:
-        i.replace(" ", "")
 
     # Additional check
     if not is_fully_tokenized(sentence):
         raise utils.CompilerError("System didn't fully tokenize the sentence")
+    
     return sentence
 
 
