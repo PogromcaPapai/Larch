@@ -43,13 +43,13 @@ RULES = {
     'false imp': utils.Rule(
         symbolic="~(A -> B) / A; ~B",
         docs="",
-        func=lambda x: utils.filter(utils.strip_around(red_neg(x),'imp', False), ((False, True),), lambda y: utils.add_prefix(y, 'not', '~')),
+        func=lambda x: utils.select(utils.strip_around(red_neg(x),'imp', False), ((False, True),), lambda y: utils.add_prefix(y, 'not', '~')),
         reusable=True
     ),
     'true imp': utils.Rule(
         symbolic="(A -> B) / ~A | B",
         docs="",
-        func=lambda x: utils.filter(utils.strip_around(x, 'imp', True), ((True,), (False,)), lambda y: utils.add_prefix(y, 'not', '~')),
+        func=lambda x: utils.select(utils.strip_around(x, 'imp', True), ((True,), (False,)), lambda y: utils.add_prefix(y, 'not', '~')),
         reusable=False
     ),
     'double not': utils.Rule(

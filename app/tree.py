@@ -29,6 +29,7 @@ class Tree(object):
     #     assert isinstance(amount, int)
     #     cls.child_limit = amount
 
+
     def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: tp.Set[int] = set()):
         """The representation of one node in a tree; non-diverging rules add to this one's statement list. It's accounted for in the interface
 
@@ -65,6 +66,7 @@ class Tree(object):
             letter_b) == 1, "_distalph only checks chars"
         return alphabet.index(letter_a) - alphabet.index(letter_b)
 
+
     def gen_name(self) -> tuple[str]:
         """Generates two possible names for the children of this node"""
         if self.parent:
@@ -85,11 +87,13 @@ class Tree(object):
 
     # Tree reading
 
+
     def getroot(self) -> Tree:
         if self.parent:
             return self.parent.getroot()
         else:
             return self
+
 
     def getchildren(self, index=None) -> tuple[Tree]:
         if not index is None:
@@ -97,9 +101,11 @@ class Tree(object):
         else:
             return tuple(self.children)
 
+
     def getbranch(self) -> tuple[str, bool]:
         """Returns all the sentences in this node's branch and information about branch's closure"""
         return self._getbranch(), self.closed
+
 
     def _getbranch(self):
         """Returns all the sentences in this node's branch; `getbranch` is recommended"""
@@ -108,9 +114,11 @@ class Tree(object):
         else:
             return self.statements
 
+
     def gettree(self):
         """Creates recursively a named tuple with the sentences"""
         return PrintedTree(sentences=self.statements, children=(i.get_tree() for i in self.children))
+
 
     def getleaves(self, *names: tp.Iterable[str]) -> list[Tree]:
         """Returns all or chosen leaves (if names are provided as args)
@@ -123,6 +131,7 @@ class Tree(object):
         else:
             return list(self.leaves.values())
 
+
     def getopen(self, *names: tp.Iterable[str]) -> tp.Iterator[Tree]:
         """Returns all or chosen open leaves (if names are provided as args)
 
@@ -130,6 +139,7 @@ class Tree(object):
         :rtype: tp.Iterator[Tree]
         """
         return (i for i in self.getleaves(*names) if not i.closed)
+
 
     def getbranch_neighbour(self, left_right: str):
         """Return left/right neighbour of the branch
@@ -162,6 +172,7 @@ class Tree(object):
         else:
             raise TreeError(f"'{left_right}' is not a valid direction")
             return None
+
 
     def getnode_neighbour(self, left_right: str) -> tp.Union[Tree]:
         """Return left/right neighbour of the node 
@@ -196,6 +207,7 @@ class Tree(object):
         else:
             return self.parent.getchildren(index)
 
+
     # Tree modification
 
     def _add_statements(self, statements: tuple[Sentence]) -> None:
@@ -206,6 +218,7 @@ class Tree(object):
         """
         self.statements.extend(statements)
 
+
     def _add_children(self, *statements: tp.Iterable[tuple[Sentence]]):
         """Adds statements as children of the node"""
         names = self.gen_name()
@@ -214,6 +227,7 @@ class Tree(object):
                 sentence[0], names[i], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy()))
             if (to_add := sentence[1:]):
                 self.children[-1].append((to_add,))
+
 
     def append(self, statements: tuple[tuple[Sentence]]):
         """Prefered way of adding new statements. Use a tuple with tuples filled with sentences.
@@ -232,6 +246,7 @@ class Tree(object):
             raise TreeError(
                 f'Trying to append {len(statements)} branches to the tree')
 
+
     def close(self, contradicting: int, contradicting2: int = None) -> None:
         """Closes the branch using the last
 
@@ -244,6 +259,7 @@ class Tree(object):
             self.closed = (contradicting2, contradicting)
         else:
             self.closed = (len(self.getbranch())-1, contradicting)
+
 
     def add_used(self, used: int) -> None:
         """

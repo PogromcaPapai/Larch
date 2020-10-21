@@ -135,9 +135,9 @@ def do_plug_switch(session: engine.Session, socket_or_name: str, new: str) -> st
     """
     try:
         session.plug_switch(socket_or_name, new)
-    except BaseException as e:  # TODO: Sprawdzić wyjątki i zrobić to ładniej
+    except BaseException as e: # Not sure if this should be rewritten
         logger.error(f"Exception caught: {e}")
-        return f"błąd: {e}"
+        return str(e)
     else:
         return f"Plugin succesfully installed: {new}"
 
