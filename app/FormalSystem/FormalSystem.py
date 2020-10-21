@@ -32,6 +32,7 @@ def Modifier(func):
 
     return wrapper
 
+
 # Formating and cleaning
 
 
@@ -94,7 +95,7 @@ def empty_creator(statement: Sentence):
 
 @cleaned
 @Creator
-def strip_around(statement: Sentence, border_type: str, split: bool) -> tuple[tuple[Sentence]]:
+def strip_around(statement: Sentence, border_type: str, split: bool, precedence: dict[str, int]) -> tuple[tuple[Sentence]]:
     """Splits the sentence on the given string (only when all brackets yet are closed)
 
     :param statement: Sentence to split
@@ -108,14 +109,18 @@ def strip_around(statement: Sentence, border_type: str, split: bool) -> tuple[tu
     """
     lvl = 0
     middle = None
+    precedence_keys = precedence.keys()
+    border_precedence = precedence.get(border_type, 0)
     for i, s in enumerate(statement):
         if s == '(':
             lvl += 1
         elif s == ')':
             lvl -= 1
-        elif lvl == 0 and s.startswith(border_type):
-            middle = i
-            break
+        elif lvl == 0 and (toktype := s.split('_')[0]) in precedence_keys:
+            if border_precedence>precedence[toktype]:
+                return ()
+            elif toktype==border_type and middle is None:
+                middle = i
 
     if middle is None:
         return ()

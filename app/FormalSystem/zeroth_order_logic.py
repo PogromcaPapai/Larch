@@ -9,6 +9,11 @@ VERSION = '0.0.1'
 
 
 USED_TYPES = ('and', 'or', 'imp', 'not', 'sentvar')
+PRECEDENCE = {
+    'and':3,
+    'or':3,
+    'imp':2,
+}
 
 def red_neg(x):
     return utils.reduce_prefix(x, 'not', ('not'))
@@ -17,39 +22,39 @@ RULES = {
     'true and': utils.Rule(
         symbolic="A and B / A; B",
         docs="",
-        func=lambda x: utils.strip_around(x, 'and', False),
+        func=lambda x: utils.strip_around(x, 'and', False, PRECEDENCE),
         reusable=True
     ),
     'false and': utils.Rule(
         symbolic="~(A and B) / ~A | ~B",
         docs="",
         func=lambda x: utils.add_prefix(utils.strip_around(
-            red_neg(x), 'and', True), 'not', '~'),
+            red_neg(x), 'and', True, PRECEDENCE), 'not', '~'),
         reusable=False
     ),
     'false or': utils.Rule(
         symbolic="~(A or B) / ~A; ~B",
         docs="",
         func=lambda x: utils.add_prefix(utils.strip_around(
-            red_neg(x), 'or', False), 'not', '~'),
+            red_neg(x), 'or', False, PRECEDENCE), 'not', '~'),
         reusable=True
     ),
     'true or': utils.Rule(
         symbolic="(A or B) / A | B",
         docs="",
-        func=lambda x: utils.strip_around(x, 'or', True),
+        func=lambda x: utils.strip_around(x, 'or', True, PRECEDENCE),
         reusable=False
     ),
     'false imp': utils.Rule(
         symbolic="~(A -> B) / A; ~B",
         docs="",
-        func=lambda x: utils.select(utils.strip_around(red_neg(x),'imp', False), ((False, True),), lambda y: utils.add_prefix(y, 'not', '~')),
+        func=lambda x: utils.select(utils.strip_around(red_neg(x),'imp', False, PRECEDENCE), ((False, True),), lambda y: utils.add_prefix(y, 'not', '~')),
         reusable=True
     ),
     'true imp': utils.Rule(
         symbolic="(A -> B) / ~A | B",
         docs="",
-        func=lambda x: utils.select(utils.strip_around(x, 'imp', True), ((True,), (False,)), lambda y: utils.add_prefix(y, 'not', '~')),
+        func=lambda x: utils.select(utils.strip_around(x, 'imp', True, PRECEDENCE), ((True,), (False,)), lambda y: utils.add_prefix(y, 'not', '~')),
         reusable=False
     ),
     'double not': utils.Rule(
