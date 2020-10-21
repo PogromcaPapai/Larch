@@ -37,6 +37,7 @@ def Modifier(func):
 
 @Modifier
 def reduce_brackets(statement: Sentence) -> Sentence:
+    """Reduces the amount of brackets around a sentence"""
     assert isinstance(statement, list)
 
     if statement == []:
@@ -73,6 +74,7 @@ def quick_bracket_check(reduced: Sentence):
 
 
 def cleaned(func):
+    """Cleans the result of a function"""
     def wrapper(*args, **kwargs):
         returned = func(*args, **kwargs)
         returned = reduce_brackets(returned)
@@ -92,7 +94,18 @@ def empty_creator(statement: Sentence):
 
 @cleaned
 @Creator
-def strip_around(statement: Sentence, border_type: str, split: bool) -> Sentence:
+def strip_around(statement: Sentence, border_type: str, split: bool) -> tuple[tuple[Sentence]]:
+    """Splits the sentence on the given string (only when all brackets yet are closed)
+
+    :param statement: Sentence to split
+    :type statement: Sentence
+    :param border_type: type of the object around which the object should be split
+    :type border_type: str
+    :param split: True for creation of new branches
+    :type split: bool
+    :return: Tuple of generated branch additions
+    :rtype: tuple[tuple[Sentence]]
+    """
     lvl = 0
     middle = None
     for i, s in enumerate(statement):
@@ -114,7 +127,20 @@ def strip_around(statement: Sentence, border_type: str, split: bool) -> Sentence
 
 @cleaned
 @Modifier
-def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
+def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence: #TODO: Needs optimalization
+    """ Deletes a prefix if it closes the rest of the sentence
+
+    :param statement: Modified sentence
+    :type statement: Sentence
+    :param prefix_type: Type of the prefix (`x` in `x_y`)
+    :type prefix_type: str
+    :param prefixes: Prefixes used in this Formal system
+    :type prefixes: tuple[str]
+    :raises Exception: After bracket reduction the statement_no_prefix gained a bracket
+    :return: Modified sentence
+    :rtype: Sentence
+    """
+    
     assert isinstance(statement, list)
 
     if statement[0].startswith(prefix_type):
@@ -139,13 +165,79 @@ def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -
 
 
 @Modifier
-def split_filter(statement: Sentence, splitter: int, func_left=lambda x: x, func_right=lambda x: x):
-    return [func_left(i) for i in statement[:splitter]]+[func_right(i) for i in statement[splitter:]]
+def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
+    """Adds a prefix to the whole sentence
 
+    :param statement: Sentence do modify
+    :type statement: Sentence
+    :param prefix: Prefix type to insert (`x` in `x_y`)
+    :type prefix: str
+    :param lexem: Prefix lexem to insert  (`y` in `x_y`)
+    :type lexem: str
+    :return: Modified sentence
+    :rtype: Sentence
+    """
 
-@Modifier
-def add_prefix(statement: Sentence, prefix: str, symbol: str) -> Sentence:
     if len(statement) == 1:
-        return [f"{prefix}_{symbol}", *statement]
+        return [f"{prefix}_{lexem}", *statement]
     else:
-        return [f"{prefix}_{symbol}", '(', *statement, ')']
+        return [f"{prefix}_{lexem}", '(', *statement, ')']
+
+
+def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
+    """Allows selective function application in the tuple structure
+
+    Examples:
+
+
+    tuple_structure :   ((A, B))
+    selection       :   ((True, False))
+    ___________________________________
+    Result          :   ((func(A), B))
+
+
+    tuple_structure :   ((A, B), (C, D))
+    selection       :   ((False, False), (True, False))
+    ___________________________________
+    Result          :   ((A, B), (func(C), D))
+
+
+    tuple_structure :   ((A, B), (C, D))
+    selection       :   ((False, True), (False, True))
+    ___________________________________
+    Result          :   ((A, func(B)), (C, func(D)))
+
+
+    :param tuple_structure: tuple of branch additions
+    :type tuple_structure: tuple[tuple[Sentence]]
+    :param selection: Selected sentences
+    :type selection: tuple[tuple[bool]]
+    :param func: Function to perform on the selected sentences
+    :type func: callable
+    :return: Modified tuple of branch additions
+    :rtype: tuple[tuple[Sentence]]
+    """
+
+    # Tests
+    if not tuple_structure:
+        return ()
+    assert len(tuple_structure)==len(selection)
+    assert all((len(tuple_structure[i])==len(selection[i]) for i in range(len(selection))))
+
+    # Execution
+    return _select(tuple_structure, selection, func)
+
+
+def _select(filtered, selection, func: callable) -> tuple[tuple[Sentence]]:
+    """Recursion used in `select`; DO NOT USE"""
+    after = []
+
+    for s, use in zip(filtered, selection):
+        if isinstance(use, bool):
+            if use:
+                after.append(func(s))
+            else:
+                after.append(s)
+        else:
+            after.append(_select(s, use, func))
+    return tuple(after)

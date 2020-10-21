@@ -10,8 +10,10 @@ VERSION = '0.0.1'
 
 USED_TYPES = ('and', 'or', 'imp', 'not', 'sentvar')
 
+def red_neg(x):
+    return utils.reduce_prefix(x, 'not', ('not'))
 
-RULES = {  # TODO: Add implication rules
+RULES = {
     'true and': utils.Rule(
         symbolic="A and B / A; B",
         docs="",
@@ -22,20 +24,32 @@ RULES = {  # TODO: Add implication rules
         symbolic="~(A and B) / ~A | ~B",
         docs="",
         func=lambda x: utils.add_prefix(utils.strip_around(
-            utils.reduce_prefix(x, 'not', ('not')), 'and', True), 'not', '~'),
+            red_neg(x), 'and', True), 'not', '~'),
         reusable=False
     ),
     'false or': utils.Rule(
         symbolic="~(A or B) / ~A; ~B",
         docs="",
         func=lambda x: utils.add_prefix(utils.strip_around(
-            utils.reduce_prefix(x, 'not', ('not')), 'or', False), 'not', '~'),
+            red_neg(x), 'or', False), 'not', '~'),
         reusable=True
     ),
     'true or': utils.Rule(
         symbolic="(A or B) / A | B",
         docs="",
         func=lambda x: utils.strip_around(x, 'or', True),
+        reusable=False
+    ),
+    'false imp': utils.Rule(
+        symbolic="~(A -> B) / A; ~B",
+        docs="",
+        func=lambda x: utils.select(utils.strip_around(red_neg(x),'imp', False), ((False, True),), lambda y: utils.add_prefix(y, 'not', '~')),
+        reusable=True
+    ),
+    'true imp': utils.Rule(
+        symbolic="(A -> B) / ~A | B",
+        docs="",
+        func=lambda x: utils.select(utils.strip_around(x, 'imp', True), ((True,), (False,)), lambda y: utils.add_prefix(y, 'not', '~')),
         reusable=False
     ),
     'double not': utils.Rule(
@@ -53,11 +67,12 @@ RULES = {  # TODO: Add implication rules
 
 @utils.cleaned
 def prepare_for_proving(statement: utils.Sentence) -> str:
-    '''Cleaning the sentence'''
+    """Cleaning the sentence"""
     return statement
 
 
 def check_contradict(statement_1: utils.Sentence, statement_2: utils.Sentence) -> bool:
+    """Checks whether statements collide with eachother"""
     if statement_1[0].startswith('not') and not statement_2[0].startswith('not'):
         negated, statement = statement_1, statement_2
     elif statement_2[0].startswith('not') and not statement_1[0].startswith('not'):
@@ -89,7 +104,7 @@ def check_rule_reuse(rule_name: str) -> bool:
 
 
 def get_rules() -> dict[str, str]:
-    '''Returns the names and documentation of the rules'''
+    """Returns the names and documentation of the rules"""
     rule_dict = dict()
     for name, rule in RULES.items():
         rule_dict[name] = "\n".join((rule.symbolic, rule.docs))
@@ -101,6 +116,16 @@ def get_used_types() -> tuple[str]:
 
 
 def use_rule(name: str, tokenized_statement: utils.Sentence) -> tp.Union[tuple[tuple[utils.Sentence]], None]:
+    """Gets a rule from `RULES` and uses it on `tokenized_statement`. If the result is false it returns None.
+
+    :param name: Name of the rule
+    :type name: str
+    :param tokenized_statement: Tokenized sentence
+    :type tokenized_statement: Sentence
+    :raises KeyError: Rule not found
+    :return: The result of rule usage
+    :rtype: tuple[tuple[utils.Sentence]] or None
+    """
     rule = RULES[name]
     fin = rule.func(tokenized_statement)
     if fin:
