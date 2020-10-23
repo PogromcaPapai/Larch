@@ -226,7 +226,7 @@ def do_use(session, name1: str, name2: str, statement: int) -> str:
 
 def do_contra(session, branch: str):
     """Detects contradictions and handles them by closing their branches"""
-    cont = session.deal_contradiction(branch)
+    cont = session.deal_contradiction(branch, 2)
     if cont:
         return f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed."
     else:
@@ -256,7 +256,8 @@ def do_jump(session: engine.Session, where: str) -> str:
     except engine.EngineError as e:
         return str(e)
 
-
+def do_get_tree(session: engine.Session) -> str:
+    return "\n".join(session.gettree())
 
 # command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
 command_dict = OrderedDict({
@@ -269,9 +270,8 @@ command_dict = OrderedDict({
     # Navigation
     'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
     'get rules': {},
-    'get always': {},
     'get branch': {},
-    'get tree': {},
+    'get tree': {'comm': do_get_tree, 'args': [], 'add_docs': ''},
     'jump': {'comm': do_jump, 'args': [str], 'add_docs': ''},
     'next': {},  # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
     # Proof manipulation

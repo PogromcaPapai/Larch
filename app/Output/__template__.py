@@ -16,3 +16,9 @@ def get_readable(sentence: utils.Sentence, lexem_parser: callable) -> str:
     :rtype: str
     """
     pass
+
+def write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> list[str]:
+    """
+    Returns a tree/table representation of the whole proof
+    """
+    pass

@@ -173,9 +173,10 @@ class Session(object):
 
     @EngineLog
     @DealWithPOP
-    def deal_contradiction(self, branch_name: str) -> tp.Union[None, tuple[int]]:
+    def deal_contradiction(self, branch_name: str, amount: int) -> tp.Union[None, tuple[int]]:
         """Checks whether a sentence contradicting with the newest one exists"""
         # Tests
+        assert amount>0
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
@@ -190,14 +191,15 @@ class Session(object):
                 raise e
         
         # Branch checking
-        last = branch[-1]
+        tested = branch[-amount:]
         for num, sent in enumerate(branch[:-1]):
-            if self.access('FormalSystem').check_contradict(sent, last):
-                EngineError(
-                    f"Found a contradiction at ({num}, {len(branch)-1})")
-                self.proof.getleaves(branch_name)[0].close(
-                    num, len(branch)-1)
-                return num, len(branch)-1
+            for i, t in enumerate(tested):
+                if self.access('FormalSystem').check_contradict(sent, t):
+                    EngineError(
+                        f"Found a contradiction at ({num}, {len(branch)-amount+i+1})")
+                    self.proof.getleaves(branch_name)[0].close(
+                        num, len(branch)-amount+i)
+                    return num, len(branch)-amount+i
         return None
 
     @EngineLog
@@ -255,6 +257,17 @@ class Session(object):
             raise EngineError("There is no proof started")
         reader = lambda x: self.access('Output').get_readable(x, self.access('Lexicon').get_lexem)
         return [reader(i) for i in branch], closed
+
+
+    @DealWithPOP
+    def gettree(self) -> list[str]:
+        if not self.proof:
+            raise EngineError(
+                "There is no proof started")
+        
+        printed = self.proof.gettree()
+        return self.access('Output').write_tree(printed, self.access('Lexicon').get_lexem)
+
 
     def jump(self, new: str):
         if not self.proof:

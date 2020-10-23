@@ -117,7 +117,11 @@ class Tree(object):
 
     def gettree(self):
         """Creates recursively a named tuple with the sentences"""
-        return PrintedTree(sentences=self.statements, children=(i.get_tree() for i in self.children))
+        if self.children:
+            children = (i.gettree() for i in self.children)
+        else:
+            children = None
+        return PrintedTree(sentences=self.statements, children=children)
 
 
     def getleaves(self, *names: tp.Iterable[str]) -> list[Tree]:
