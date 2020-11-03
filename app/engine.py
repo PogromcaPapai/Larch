@@ -24,7 +24,6 @@ def EngineLog(func):
         return func(*args, **kwargs)
     return new
 
-
 def EngineChangeLog(func):
     def new(*args, **kwargs):
         logger.info(
@@ -52,10 +51,21 @@ class EngineError(Exception):
 # Session
 
 class Session(object):
+    """
+    Session objects allow the UserInterface plugin to interact with the engine
+    All exceptions are EngineErrors and can be shown to the user
+    """
     ENGINE_VERSION = '0.0.1'
     SOCKETS = ('FormalSystem', 'Lexicon', 'Output')
 
     def __init__(self, session_ID: str, config_file: str):
+        """Initializes an empty Session which reads from the config file
+
+        :param session_ID: [description]
+        :type session_ID: str
+        :param config_file: [description]
+        :type config_file: str
+        """
         self.id = session_ID
         self.config_name = config_file
         self.read_config()
@@ -112,8 +122,14 @@ class Session(object):
         self.write_config()
 
 
-    def plug_list(self, socket: str) -> list:
+    def plug_list(self, socket: str) -> list[str]:
+        """Lists all of the plugins available for this socket
 
+        :param socket: Socket name
+        :type socket: str
+        :raises EngineError: No socket with this name
+        :rtype: list[str]
+        """
         sock = self.sockets.get(socket, None)
         if sock is None:
             raise EngineError(f"There is no socket named {socket}")
@@ -121,6 +137,14 @@ class Session(object):
             return sock.find_plugins()
 
     def plug_gen(self, socket: str, name: str) -> None:
+        """Generates a template of a plugin
+
+        :param socket: Socket name
+        :type socket: str
+        :param name: Name of the new plugin
+        :type name: str
+        :raises EngineError: No socket with this name
+        """
         sock = self.sockets.get(socket, None)
         if sock is None:
             raise EngineError(f"There is no socket named {socket}")
@@ -205,7 +229,15 @@ class Session(object):
     @EngineLog
     @DealWithPOP
     def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tuple[str]]:
+        """Uses a predefined rule on the statement with given ID, returns the names of changed branches if rule was used successfully
 
+        :param rule: Rule name (from FormalSystem)
+        :type rule: str
+        :param statement_ID: Number of the statement in the active branch
+        :type statement_ID: int
+        :return: None/Names of changed branches
+        :rtype: tp.Union[None, tuple[str]]
+        """
         # Tests
         if not self.proof:
             raise EngineError(
@@ -247,7 +279,9 @@ class Session(object):
     # Proof navigation
 
     @DealWithPOP
-    def getbranch(self) -> list[list[str], tuple[int, int]]:
+    def getbranch(self) -> list[list[str], tp.Union[tuple[int, int], None]]:
+        """Returns the active branch and ID of contradicting sentences if the branch is closed 
+        """
         try:
             branch, closed = self.proof.leaves[self.branch].getbranch()
         except KeyError:
@@ -261,6 +295,7 @@ class Session(object):
 
     @DealWithPOP
     def gettree(self) -> list[str]:
+        """Returns the whole proof as a formatted list of strings"""
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
@@ -270,6 +305,11 @@ class Session(object):
 
 
     def jump(self, new: str):
+        """Jumps between branches of the proof
+
+        :param new: Target branch
+        :type new: str
+        """
         if not self.proof:
             raise EngineError("There is no proof started")
         new = new.upper()
