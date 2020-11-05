@@ -280,8 +280,7 @@ class Session(object):
 
     @DealWithPOP
     def getbranch(self) -> list[list[str], tp.Union[tuple[int, int], None]]:
-        """Returns the active branch and ID of contradicting sentences if the branch is closed 
-        """
+        """Returns the active branch and ID of contradicting sentences if the branch is closed"""
         try:
             branch, closed = self.proof.leaves[self.branch].getbranch()
         except KeyError:
@@ -292,6 +291,18 @@ class Session(object):
         reader = lambda x: self.access('Output').get_readable(x, self.access('Lexicon').get_lexem)
         return [reader(i) for i in branch], closed
 
+    def getbranches(self):
+        """Returns all branch names"""
+        if not self.proof:
+            raise EngineError(
+                "There is no proof started")
+
+        return list(self.proof.leaves.keys())
+
+    @DealWithPOP
+    def getrules(self):
+        """Returns all rule names"""
+        return self.access('FormalSystem').get_rules().keys()
 
     @DealWithPOP
     def gettree(self) -> list[str]:
