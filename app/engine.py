@@ -200,8 +200,8 @@ class Session(object):
             raise EngineError(f"Syntax error: {problem}")
         else:
             tokenized = self.access('FormalSystem').prepare_for_proving(tokenized)
-            self.proof = Tree(tokenized, branch_name='A')
-            self.branch = 'A'
+            self.proof = Tree(tokenized, branch_name='Linen')
+            self.branch = 'Linen'
 
 
     @EngineLog
@@ -303,7 +303,7 @@ class Session(object):
             branch, closed = self.proof.leaves[self.branch].getbranch()
         except KeyError:
             raise EngineError(
-                f"Branch '{self.branch.name}' doesn't exist in this proof")
+                f"Branch '{self.branch}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
         reader = lambda x: self.access('Output').get_readable(x, self.access('Lexicon').get_lexem)
@@ -376,13 +376,10 @@ class Session(object):
             else:
                 self.branch = changed.name
         else:
-            changed = self.proof.leaves.get(new, None)
+            changed = self.proof.leaves.get(new.capitalize(), None)
             if not changed:
-                if len(new) > 1:
-                    raise EngineError(f"Branch name too long")
-                else:
-                    raise EngineError(
-                        f"Branch '{new}' doesn't exist in this proof")
+                raise EngineError(
+                    f"Branch '{new}' doesn't exist in this proof")
             else:
                 self.branch = changed.name
 

@@ -1,18 +1,20 @@
+import json
 import logging
 import os
 import sys
 import typing as tp
-from math import log10
 from collections import OrderedDict, namedtuple
+from math import log10
 from xml.sax.saxutils import escape
 
-import prompt_toolkit as ptk
-
 import engine
+import prompt_toolkit as ptk
 
 SOCKET = 'UserInterface'
 VERSION = '0.0.1'
 
+with open('colors.json') as f:
+    colors = json.load(f)
 
 # Logging config
 
@@ -304,7 +306,7 @@ command_dict = OrderedDict({
     'jump': {'comm': do_jump, 'args': [str], 'summary': ''},
     'next': {'comm': do_next, 'args': [], 'summary': ''},
     # Proof manipulation
-    'write': {'comm': do_jump, 'args': [str], 'summary': ''},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
+    'write': {'comm': do_write, 'args': [str], 'summary': ''},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
     'use': {'comm': do_use, 'args': [str, str, int], 'summary': ''},
     'leave': {'comm': do_leave, 'args': [], 'summary': ''},
     'prove': {'comm': do_prove, 'args': 'multiple_strings', 'summary': ''},
@@ -334,9 +336,11 @@ def get_rprompt(session):
     # Proof retrieval
     if session.proof:
         prompt, closed = session.getbranch()
+        background = colors[session.branch]
     else:
         prompt = DEF_PROMPT
         closed = None
+        background = colors['Grey']
 
     # Formatting
     to_show = []
@@ -352,7 +356,7 @@ def get_rprompt(session):
         to_show.append(s+spaces*" ")
 
     new = " \n ".join(to_show)
-    return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {escape(new)} </style>')
+    return ptk.HTML(f'\n<style fg="#000000" bg="{background}"> {escape(new)} </style>')
 
 
 def get_toolbar():
@@ -401,7 +405,7 @@ def run() -> int:
     """
     session = engine.Session('main', 'config.json')
     ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>\nType ? to get command list; type [command]? to get help'))
-    console = ptk.PromptSession(message=lambda: f"{session.branch}# ", rprompt=lambda: get_rprompt(
+    console = ptk.PromptSession(message=lambda: f"{session.branch+bool(session.branch)*' '}# ", rprompt=lambda: get_rprompt(
         session), complete_in_thread=True, complete_while_typing=True, completer=Autocomplete(session))
     while True:
         command = console.prompt()
