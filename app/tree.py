@@ -10,7 +10,7 @@ with open('colors.json') as f:
     colors = list(json.load(f).keys())
 
 Sentence = tp.NewType("Sentence", list[str])
-PrintedTree = namedtuple('PrintedTree', ('sentences', 'children'))
+PrintedTree = namedtuple('PrintedTree', ('sentences', 'children', 'closer'))
 
 
 class TreeError(Exception):
@@ -107,9 +107,14 @@ class Tree(object):
         """Creates recursively a named tuple with the sentences"""
         if self.children:
             children = (i.gettree() for i in self.children)
+            closer = ''
         else:
             children = None
-        return PrintedTree(sentences=self.statements, children=children)
+            if self.closed:
+                closer = f"XXX ({self.closed[0]+1}, {self.closed[1]+1})"
+            else:
+                closer = ''
+        return PrintedTree(sentences=self.statements, children=children, closer=closer)
 
 
     def getleaves(self, *names: tp.Iterable[str]) -> list[Tree]:

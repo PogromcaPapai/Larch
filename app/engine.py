@@ -283,7 +283,7 @@ class Session(object):
                 if not children:
                     if not_reusable:
                         self.proof.leaves[self.branch].add_used(statement_ID)
-                    return old.name
+                    return (old.name,)
                 else:
                     if not_reusable:    
                         for j in children:
