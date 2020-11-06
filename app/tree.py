@@ -85,6 +85,7 @@ class Tree(object):
         else:
             return 'A', 'Z'
 
+
     # Tree reading
 
 
@@ -212,7 +213,13 @@ class Tree(object):
             return self.parent.getchildren(index)
 
 
+    def is_finished(self):
+        """Checks if all branches are closed"""
+        return all((i.closed for i in self.leaves.values()))
+
+
     # Tree modification
+
 
     def _add_statements(self, statements: tuple[Sentence]) -> None:
         """Adds statement(s) to the node

@@ -179,6 +179,25 @@ def do_plug_gen(session: engine.Session, socket: str, name: str) -> str:
         return f"Generated plugin {name} from template"
 
 
+def do_write(session: engine.Session, filename: str):
+    """
+    Writes a whole proof to a file with the provided name; if the file already exists program will append to it.
+
+    Arguments:
+        - filename [str]
+    """
+    proof = session.gettree()
+    if os.path.exists(filename):
+        with open(filename, 'a') as f:
+            f.write('\n---\n')
+            f.writelines(proof)
+        return f"Proof appended to {filename}"
+    else:
+        with open(filename, 'w') as f:
+            f.writelines(proof)
+        return f"Proof saved as {filename}"
+
+
 # Proof manipulation
 
 
@@ -219,6 +238,8 @@ def do_use(session, name1: str, name2: str, statement: int) -> str:
         # Contradiction handling
         for i in val:
             out.append(do_contra(session, i))
+        if session.proof_finished():
+            out.append("Every branch is closed")
 
     else:
         out.append("Rule couldn't be used")
@@ -258,19 +279,32 @@ def do_jump(session: engine.Session, where: str) -> str:
     except engine.EngineError as e:
         return str(e)
 
+def do_next(session: engine.Session):
+    """Finds an open branch and jumps to it"""
+    try:
+        session.next()
+    except engine.EngineError as e:
+        return str(e)
+
+def do_get_rules(session):
+    """Returns all of the rules that can be used in this proof system"""
+    try:
+        return "\n".join((" - ".join(i) for i in session.getrules().items()))
+    except engine.EngineError as e:
+        return str(e)
+
 def do_get_tree(session: engine.Session) -> str:
     return "\n".join(session.gettree())
 
 command_dict = OrderedDict({
     # Navigation
     'exit': {'comm': do_exit, 'args': [], 'summary': ''},
-    'get rules': {},
-    'get branch': {},
+    'get rules': {'comm': do_get_rules, 'args': [], 'summary': ''},
     'get tree': {'comm': do_get_tree, 'args': [], 'summary': ''},
     'jump': {'comm': do_jump, 'args': [str], 'summary': ''},
-    'next': {},  # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
+    'next': {'comm': do_next, 'args': [], 'summary': ''},
     # Proof manipulation
-    'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
+    'write': {'comm': do_jump, 'args': [str], 'summary': ''},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
     'use': {'comm': do_use, 'args': [str, str, int], 'summary': ''},
     'leave': {'comm': do_leave, 'args': [], 'summary': ''},
     'prove': {'comm': do_prove, 'args': 'multiple_strings', 'summary': ''},
@@ -344,8 +378,8 @@ class Autocomplete(ptk.completion.Completer):
             except engine.EngineError:
                 return
         elif full.startswith('use '):
-            if any((full.rstrip().endswith(rule) for rule in self.engine.getrules())):
-                yield ptk.completion.Completion(" ", display=ptk.HTML("<i>Sentence number</i>"))
+            if any((full.rstrip().endswith(rule) for rule in self.engine.getrules().keys())):
+                yield ptk.completion.Completion(" ", display=ptk.HTML("<b>Sentence number</b>"))
             else:
                 try:
                     for i in filter(lambda x: x.startswith(last), self.engine.getrules()):
