@@ -24,12 +24,14 @@ def EngineLog(func):
         return func(*args, **kwargs)
     return new
 
+
 def EngineChangeLog(func):
     def new(*args, **kwargs):
         logger.info(
             f"{func.__name__} with args={str(args)} and kwargs={str(kwargs)}")
         return func(*args, **kwargs)
     return new
+
 
 def DealWithPOP(func):
     """A decorator which convert all PluginErrors to EngineErrors for simpler handling in the UI socket"""
@@ -40,7 +42,9 @@ def DealWithPOP(func):
             raise EngineError(str(e))
     return new
 
+
 # Exceptions
+
 
 class EngineError(Exception):
     def __init__(self, msg: str, *args, **kwargs):
@@ -49,6 +53,7 @@ class EngineError(Exception):
 
 
 # Session
+
 
 class Session(object):
     """
@@ -78,10 +83,13 @@ class Session(object):
         self.proof = None
         self.branch = ""
 
+
     def __repr__(self):
         return self.id
 
+
     # Plugin manpiulation
+
 
     def access(self, socket: str) -> Module:
         """Returns the module plugges into a socket of the given name"""
@@ -136,6 +144,7 @@ class Session(object):
         else:
             return sock.find_plugins()
 
+
     def plug_gen(self, socket: str, name: str) -> None:
         """Generates a template of a plugin
 
@@ -151,12 +160,15 @@ class Session(object):
         else:
             sock.generate_template(name)
 
+
     # config reading and writing
+
 
     def read_config(self):
         logger.debug("Config loading")
         with open(self.config_name, 'r') as target:
             self.config = json.load(target)
+
 
     def write_config(self):
         logger.debug("Config writing")
@@ -165,6 +177,7 @@ class Session(object):
 
 
     # Proof manipulation
+
 
     @EngineLog
     @DealWithPOP
@@ -187,13 +200,15 @@ class Session(object):
             raise EngineError(f"Syntax error: {problem}")
         else:
             tokenized = self.access('FormalSystem').prepare_for_proving(tokenized)
-            self.proof = Tree(tokenized, branch_name='A')
-            self.branch = 'A'
+            self.proof = Tree(tokenized, branch_name='Linen')
+            self.branch = 'Linen'
+
 
     @EngineLog
     def reset_proof(self) -> None:
         self.proof = None
         self.branch = ''
+
 
     @EngineLog
     @DealWithPOP
@@ -226,6 +241,7 @@ class Session(object):
                     return num, len(branch)-amount+i
         return None
 
+   
     @EngineLog
     @DealWithPOP
     def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tuple[str]]:
@@ -267,7 +283,7 @@ class Session(object):
                 if not children:
                     if not_reusable:
                         self.proof.leaves[self.branch].add_used(statement_ID)
-                    return old.name
+                    return (old.name,)
                 else:
                     if not_reusable:    
                         for j in children:
@@ -276,21 +292,37 @@ class Session(object):
             else:
                 return None
 
+
     # Proof navigation
+
 
     @DealWithPOP
     def getbranch(self) -> list[list[str], tp.Union[tuple[int, int], None]]:
-        """Returns the active branch and ID of contradicting sentences if the branch is closed 
-        """
+        """Returns the active branch and ID of contradicting sentences if the branch is closed"""
         try:
             branch, closed = self.proof.leaves[self.branch].getbranch()
         except KeyError:
             raise EngineError(
-                f"Branch '{self.branch.name}' doesn't exist in this proof")
+                f"Branch '{self.branch}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
         reader = lambda x: self.access('Output').get_readable(x, self.access('Lexicon').get_lexem)
         return [reader(i) for i in branch], closed
+
+
+    def getbranches(self):
+        """Returns all branch names"""
+        if not self.proof:
+            raise EngineError(
+                "There is no proof started")
+
+        return list(self.proof.leaves.keys())
+
+
+    @DealWithPOP
+    def getrules(self):
+        """Returns all rule names"""
+        return self.access('FormalSystem').get_rules()
 
 
     @DealWithPOP
@@ -304,7 +336,30 @@ class Session(object):
         return self.access('Output').write_tree(printed, self.access('Lexicon').get_lexem)
 
 
-    def jump(self, new: str):
+    def next(self) -> None:
+        """Jumps to an open branch"""
+        if not self.proof:
+            raise EngineError("There is no proof started")
+
+        for name, tree in self.proof.leaves.items():
+            if name == self.branch:
+                continue
+            elif tree.closed:
+                continue
+            else:
+                self.branch = name
+                return f"Branch changed to {name}"
+        raise EngineError("All branches are closed")
+
+    
+    def proof_finished(self):
+        """Checks if proof is finished"""
+        if not self.proof:
+            raise EngineError("There is no proof started")
+        return self.proof.is_finished()
+
+
+    def jump(self, new: str) -> None:
         """Jumps between branches of the proof
 
         :param new: Target branch
@@ -312,6 +367,7 @@ class Session(object):
         """
         if not self.proof:
             raise EngineError("There is no proof started")
+
         new = new.upper()
         if new in ('LEFT', 'RIGHT'):
             changed = self.proof.leaves[self.branch].getbranch_neighbour(new)
@@ -320,13 +376,10 @@ class Session(object):
             else:
                 self.branch = changed.name
         else:
-            changed = self.proof.leaves.get(new, None)
+            changed = self.proof.leaves.get(new.capitalize(), None)
             if not changed:
-                if len(new) > 1:
-                    raise EngineError(f"Branch name too long")
-                else:
-                    raise EngineError(
-                        f"Branch '{new}' doesn't exist in this proof")
+                raise EngineError(
+                    f"Branch '{new}' doesn't exist in this proof")
             else:
                 self.branch = changed.name
 

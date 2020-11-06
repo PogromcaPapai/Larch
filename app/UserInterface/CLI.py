@@ -1,18 +1,20 @@
+import json
 import logging
 import os
 import sys
 import typing as tp
-from math import log10
 from collections import OrderedDict, namedtuple
+from math import log10
 from xml.sax.saxutils import escape
 
-import prompt_toolkit as ptk
-
 import engine
+import prompt_toolkit as ptk
 
 SOCKET = 'UserInterface'
 VERSION = '0.0.1'
 
+with open('colors.json') as f:
+    colors = json.load(f)
 
 # Logging config
 
@@ -50,6 +52,8 @@ def parser(statement: str, _dict: dict) -> list[Command]:
     :rtype: list[Command]
     """
     comm = []
+    if ';' in statement:
+        raise ParsingError("Multiple commands not supported yet")
     for command_raw in statement.split(';'):
         # Function parsing
         command = command_raw.strip()
@@ -67,9 +71,9 @@ def parser(statement: str, _dict: dict) -> list[Command]:
         if '?' in args or '--help' in args or 'help' in args:
             if func['comm'].__doc__:
                 doc = "\n".join(
-                    (f"Help for '{name}':", func['add_docs'], func['comm'].__doc__))
+                    (f"Help for '{name}':", func['summary'], func['comm'].__doc__))
             else:
-                doc = func['add_docs']
+                doc = func['summary']
             comm.append(Command(func['comm'], None, doc))
             continue
 
@@ -177,6 +181,25 @@ def do_plug_gen(session: engine.Session, socket: str, name: str) -> str:
         return f"Generated plugin {name} from template"
 
 
+def do_write(session: engine.Session, filename: str):
+    """
+    Writes a whole proof to a file with the provided name; if the file already exists program will append to it.
+
+    Arguments:
+        - filename [str]
+    """
+    proof = session.gettree()
+    if os.path.exists(filename):
+        with open(filename, 'a') as f:
+            f.write('\n---\n')
+            f.writelines(proof)
+        return f"Proof appended to {filename}"
+    else:
+        with open(filename, 'w') as f:
+            f.writelines(proof)
+        return f"Proof saved as {filename}"
+
+
 # Proof manipulation
 
 
@@ -217,6 +240,8 @@ def do_use(session, name1: str, name2: str, statement: int) -> str:
         # Contradiction handling
         for i in val:
             out.append(do_contra(session, i))
+        if session.proof_finished():
+            out.append("Every branch is closed")
 
     else:
         out.append("Rule couldn't be used")
@@ -256,29 +281,41 @@ def do_jump(session: engine.Session, where: str) -> str:
     except engine.EngineError as e:
         return str(e)
 
+def do_next(session: engine.Session):
+    """Finds an open branch and jumps to it"""
+    try:
+        session.next()
+    except engine.EngineError as e:
+        return str(e)
+
+def do_get_rules(session):
+    """Returns all of the rules that can be used in this proof system"""
+    try:
+        return "\n".join((" - ".join(i) for i in session.getrules().items()))
+    except engine.EngineError as e:
+        return str(e)
+
 def do_get_tree(session: engine.Session) -> str:
     return "\n".join(session.gettree())
 
-# command_dict powinien być posortowany od najdłuższej do najkrótszej komendy, jeśli jedna jest rozwinięciem drugiej
 command_dict = OrderedDict({
-    # Program interaction
-    'plugin switch': {'comm': do_plug_switch, 'args': [str, str], 'add_docs': ''},
-    'plugin list all': {'comm': do_plug_list_all, 'args': [], 'add_docs': ''},
-    'plugin list': {'comm': do_plug_list, 'args': [str], 'add_docs': ''},
-    'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'add_docs': ''},
-    'clear': {'comm': do_clear, 'args': [], 'add_docs': ''},
     # Navigation
-    'exit': {'comm': do_exit, 'args': [], 'add_docs': ''},
-    'get rules': {},
-    'get branch': {},
-    'get tree': {'comm': do_get_tree, 'args': [], 'add_docs': ''},
-    'jump': {'comm': do_jump, 'args': [str], 'add_docs': ''},
-    'next': {},  # Nie wymaga argumentu, przenosi po prostu do kolejnej niezamkniętej gałęzi
+    'exit': {'comm': do_exit, 'args': [], 'summary': ''},
+    'get rules': {'comm': do_get_rules, 'args': [], 'summary': ''},
+    'get tree': {'comm': do_get_tree, 'args': [], 'summary': ''},
+    'jump': {'comm': do_jump, 'args': [str], 'summary': ''},
+    'next': {'comm': do_next, 'args': [], 'summary': ''},
     # Proof manipulation
-    'save': {},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
-    'use': {'comm': do_use, 'args': [str, str, int], 'add_docs': ''},
-    'leave': {'comm': do_leave, 'args': [], 'add_docs': ''},
-    'prove': {'comm': do_prove, 'args': 'multiple_strings', 'add_docs': ''},
+    'write': {'comm': do_write, 'args': [str], 'summary': ''},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
+    'use': {'comm': do_use, 'args': [str, str, int], 'summary': ''},
+    'leave': {'comm': do_leave, 'args': [], 'summary': ''},
+    'prove': {'comm': do_prove, 'args': 'multiple_strings', 'summary': ''},
+    # Program interaction
+    'plugin switch': {'comm': do_plug_switch, 'args': [str, str], 'summary': ''},
+    'plugin list all': {'comm': do_plug_list_all, 'args': [], 'summary': ''},
+    'plugin list': {'comm': do_plug_list, 'args': [str], 'summary': ''},
+    'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'summary': ''},
+    'clear': {'comm': do_clear, 'args': [], 'summary': ''},
 })
 
 
@@ -287,7 +324,7 @@ def do_help(session) -> str:
     return "\n".join(command_dict.keys())
 
 
-command_dict['?'] = {'comm': do_help, 'args': [], 'add_docs': ''}
+command_dict['?'] = {'comm': do_help, 'args': [], 'summary': ''}
 
 
 # Front-end setup
@@ -295,13 +332,16 @@ command_dict['?'] = {'comm': do_help, 'args': [], 'add_docs': ''}
 def get_rprompt(session):
     """Generates the branch preview in the bottom right corner"""
     DEF_PROMPT = "Miejsce na twój dowód".split()
+    THRESHOLD = 128
 
     # Proof retrieval
     if session.proof:
         prompt, closed = session.getbranch()
+        background = colors[session.branch]
     else:
         prompt = DEF_PROMPT
         closed = None
+        background = colors['Grey']
 
     # Formatting
     to_show = []
@@ -316,13 +356,59 @@ def get_rprompt(session):
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
 
-    new = " \n ".join(to_show)
-    return ptk.HTML(f'\n<style fg="#000000" bg="#00ff00"> {escape(new)} </style>')
+    # Foreground color calculating
+    if max_color(background)>THRESHOLD:
+        foreground = "#000000"
+    else:
+        foreground = "#FFFFFF"
 
+    new = " \n ".join(to_show)
+    return ptk.HTML(f'\n<style fg="{foreground}" bg="{background}"> {escape(new)} </style>')
+
+
+def max_color(rgb_color: str) -> int:
+    """
+    Calculates highest value from the RGB format
+    """
+    assert len(rgb_color)==7
+    red = int(rgb_color[1:3], 16)
+    green = int(rgb_color[3:5], 16)
+    blue = int(rgb_color[5:], 16)
+    return max((red, green, blue))
 
 def get_toolbar():
     return ptk.HTML('This is a <b><style bg="ansired">Toolbar</style></b>!')
 
+
+class Autocomplete(ptk.completion.Completer):
+
+    def __init__(self, session: engine.Session,*args, **kwargs):
+        self.engine = session
+        super().__init__(*args, **kwargs)
+
+    def get_completions(self, document, complete_event):
+        full = document.text
+        last = document.get_word_before_cursor()
+        if not any((full.startswith(com) for com in command_dict.keys())):
+            for i in filter(lambda x: x.startswith(full), command_dict.keys()):
+                yield ptk.completion.Completion(i, start_position=-len(full))
+        elif full == 'jump ':
+            try:
+                for i in ['<','>']+self.engine.getbranches():
+                    yield ptk.completion.Completion(i, start_position=-len(last))
+            except engine.EngineError:
+                return
+        elif full.startswith('use '):
+            if any((full.rstrip().endswith(rule) for rule in self.engine.getrules().keys())):
+                yield ptk.completion.Completion(" ", display=ptk.HTML("<b>Sentence number</b>"))
+            else:
+                try:
+                    for i in filter(lambda x: x.startswith(last), self.engine.getrules()):
+                        yield ptk.completion.Completion(i, start_position=-len(last))
+                except engine.EngineError:
+                    return
+        elif full.startswith('prove '):
+            pass
 
 # run
 
@@ -335,9 +421,9 @@ def run() -> int:
         int: Exit code; -1 will restart the app
     """
     session = engine.Session('main', 'config.json')
-    ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>'))
-    console = ptk.PromptSession(message=lambda: f"{session.branch}~ ", rprompt=lambda: get_rprompt(
-        session), bottom_toolbar=get_toolbar)
+    ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>\nType ? to get command list; type [command]? to get help'))
+    console = ptk.PromptSession(message=lambda: f"{session.branch+bool(session.branch)*' '}# ", rprompt=lambda: get_rprompt(
+        session), complete_in_thread=True, complete_while_typing=True, completer=Autocomplete(session))
     while True:
         command = console.prompt()
         logger.info(f"Got a command: {command}")

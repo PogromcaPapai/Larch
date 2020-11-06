@@ -70,12 +70,16 @@ def _write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> tuple[list[s
         else:
             symb_to_use = width-delilen*len(widths)-delilen
             children = [utils.align(*col) for col in zip(children, widths)]
-        zipped = [DELIMITER.join(i) for i in zip(*children)]
+        append = [DELIMITER.join(i) for i in zip(*children)]
 
     else:
-        zipped = []
+        if len(tree.closer)>width:
+            width = len(tree.closer)
+            append = [tree.closer]
+        else:
+            append = [tree.closer+" "*(width - len(tree.closer))]
     
     # Align the sentences
     sentences = utils.align(parsed, width)
 
-    return sentences+zipped, width
+    return sentences+append, width

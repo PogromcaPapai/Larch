@@ -1,6 +1,6 @@
 {
     "chosen_plugins": {
-        "UserInterface": "cmd",
+        "UserInterface": "CLI",
         "Lexicon": "basic",
         "FormalSystem": "zeroth_order_logic",
         "Output": "text"

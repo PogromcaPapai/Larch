@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import typing as tp
-from collections import namedtuple
+import json, random
+from collections import namedtuple, OrderedDict
 from string import ascii_uppercase as alphabet
 from math import inf as INFINITY
 
+with open('colors.json') as f:
+    colors = list(json.load(f).keys())
+
 Sentence = tp.NewType("Sentence", list[str])
-
-
-PrintedTree = namedtuple('PrintedTree', ('sentences', 'children'))
+PrintedTree = namedtuple('PrintedTree', ('sentences', 'children', 'closer'))
 
 
 class TreeError(Exception):
@@ -53,37 +55,23 @@ class Tree(object):
         self.closed = closed
         self.used = used
         if leaves_dict is None:
-            leaves_dict = dict()
+            leaves_dict = OrderedDict()
         leaves_dict[branch_name] = self
         self.leaves = leaves_dict
 
     # Technical
 
     @staticmethod
-    def _distalph(letter_a: str, letter_b: str) -> int:
+    def _dist(a: Tree, b: Tree) -> int:
         """Calculates distance between two letters"""
-        assert len(letter_a) == 1 and len(
-            letter_b) == 1, "_distalph only checks chars"
-        return alphabet.index(letter_a) - alphabet.index(letter_b)
+        assert a.leaves == b.leaves
+        return list(a.leaves.keys()).index(a.name) - list(a.leaves.keys()).index(b.name)
 
 
-    def gen_name(self) -> tuple[str]:
+    def gen_name(self, am=2) -> tuple[str]:
         """Generates two possible names for the children of this node"""
-        if self.parent:
-            dist = self._distalph(self.name, self.parent.getchildren(
-                0).name) + self._distalph(self.name, self.parent.getchildren(-1).name)
-            assert dist != 0
-            new = abs(dist)//2
-            if dist < 0:
-                if self.leaves:
-                    assert not alphabet[new] in self.leaves.keys()
-                return self.name, alphabet[new]
-            else:
-                if self.leaves:
-                    assert not alphabet[25-new] in self.leaves.keys()
-                return alphabet[25-new], self.name
-        else:
-            return 'A', 'Z'
+        return self.name, *random.choices([i for i in colors if not i in self.leaves.keys()], k=am-1) 
+
 
     # Tree reading
 
@@ -119,9 +107,14 @@ class Tree(object):
         """Creates recursively a named tuple with the sentences"""
         if self.children:
             children = (i.gettree() for i in self.children)
+            closer = ''
         else:
             children = None
-        return PrintedTree(sentences=self.statements, children=children)
+            if self.closed:
+                closer = f"XXX ({self.closed[0]+1}, {self.closed[1]+1})"
+            else:
+                closer = ''
+        return PrintedTree(sentences=self.statements, children=children, closer=closer)
 
 
     def getleaves(self, *names: tp.Iterable[str]) -> list[Tree]:
@@ -157,20 +150,20 @@ class Tree(object):
         min_dist = INFINITY
         obj_w_min = None
         if left_right.upper() in ('R', 'RIGHT'):
-            for i in self.leaves.items():
-                dist = self._distalph(i[0], self.name)
+            for _, i in self.leaves.items():
+                dist = self._dist(i, self)
                 if dist > 0 and dist < min_dist:
                     min_dist = dist
-                    obj_w_min = i[1]
+                    obj_w_min = i
             return obj_w_min
 
         # Copy of the previous part, but with different distance computing
         elif left_right.upper() in ('L', 'LEFT'):
-            for i in self.leaves.items():
-                dist = self._distalph(self.name, i[0])
+            for _, i in self.leaves.items():
+                dist = self._dist(self, i)
                 if dist > 0 and dist < min_dist:
                     min_dist = dist
-                    obj_w_min = i[1]
+                    obj_w_min = i
             return obj_w_min
 
         else:
@@ -212,7 +205,13 @@ class Tree(object):
             return self.parent.getchildren(index)
 
 
+    def is_finished(self):
+        """Checks if all branches are closed"""
+        return all((i.closed for i in self.leaves.values()))
+
+
     # Tree modification
+
 
     def _add_statements(self, statements: tuple[Sentence]) -> None:
         """Adds statement(s) to the node
