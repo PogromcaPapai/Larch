@@ -332,6 +332,7 @@ command_dict['?'] = {'comm': do_help, 'args': [], 'summary': ''}
 def get_rprompt(session):
     """Generates the branch preview in the bottom right corner"""
     DEF_PROMPT = "Miejsce na twój dowód".split()
+    THRESHOLD = 128
 
     # Proof retrieval
     if session.proof:
@@ -355,9 +356,25 @@ def get_rprompt(session):
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
 
-    new = " \n ".join(to_show)
-    return ptk.HTML(f'\n<style fg="#000000" bg="{background}"> {escape(new)} </style>')
+    # Foreground color calculating
+    if max_color(background)>THRESHOLD:
+        foreground = "#000000"
+    else:
+        foreground = "#FFFFFF"
 
+    new = " \n ".join(to_show)
+    return ptk.HTML(f'\n<style fg="{foreground}" bg="{background}"> {escape(new)} </style>')
+
+
+def max_color(rgb_color: str) -> int:
+    """
+    Calculates highest value from the RGB format
+    """
+    assert len(rgb_color)==7
+    red = int(rgb_color[1:3], 16)
+    green = int(rgb_color[3:5], 16)
+    blue = int(rgb_color[5:], 16)
+    return max((red, green, blue))
 
 def get_toolbar():
     return ptk.HTML('This is a <b><style bg="ansired">Toolbar</style></b>!')
