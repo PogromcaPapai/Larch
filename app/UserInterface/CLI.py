@@ -190,13 +190,13 @@ def do_write(session: engine.Session, filename: str):
     """
     proof = session.gettree()
     if os.path.exists(filename):
-        with open(filename, 'a') as f:
+        with open(filename, 'ab') as f:
             f.write('\n---\n')
-            f.writelines(proof)
+            f.writelines([(i+'\n').encode('utf-8') for i in proof])
         return f"Proof appended to {filename}"
     else:
-        with open(filename, 'w') as f:
-            f.writelines(proof)
+        with open(filename, 'wb') as f:
+            f.writelines([(i+'\n').encode('utf-8') for i in proof])
         return f"Proof saved as {filename}"
 
 
@@ -316,6 +316,7 @@ command_dict = OrderedDict({
     'plugin list': {'comm': do_plug_list, 'args': [str], 'summary': ''},
     'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'summary': ''},
     'clear': {'comm': do_clear, 'args': [], 'summary': ''},
+    'kaja godek': {'comm': lambda x: "***** ***", 'args': [], 'summary': ''}
 })
 
 

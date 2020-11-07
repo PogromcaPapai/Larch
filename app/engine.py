@@ -116,9 +116,10 @@ class Session(object):
                 if i[1] == socket_or_old:
                     socket_name = i[0]
                     socket = self.sockets[socket_name]
-        if not socket:
-            raise EngineError(f"Socket/plugin {socket_or_old} not found in the program")
-
+            if not socket:
+                raise EngineError(f"Socket/plugin {socket_or_old} not found in the program")
+        else:
+            socket_name = socket_or_old
         # Plugging
         try:
             socket.plug(new)
