@@ -1,0 +1,3 @@
+dearpygui==0.5.66
+prompt-toolkit==3.0.8
+wcwidth==0.2.5

@@ -387,4 +387,4 @@ class Session(object):
     # Misc
 
     def get_socket_names(self):
-        return self.SOCKETS
+        return self.SOCKETS+tuple(['UserInterface'])
