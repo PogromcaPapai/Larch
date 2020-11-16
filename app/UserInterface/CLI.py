@@ -393,7 +393,7 @@ class Autocomplete(ptk.completion.Completer):
         if not any((full.startswith(com) for com in command_dict.keys())):
             for i in filter(lambda x: x.startswith(full), command_dict.keys()):
                 yield ptk.completion.Completion(i, start_position=-len(full))
-        elif full == 'jump ':
+        elif full.startswith('jump '):
             try:
                 for i in ['<','>']+self.engine.getbranches():
                     yield ptk.completion.Completion(i, start_position=-len(last))
@@ -408,6 +408,18 @@ class Autocomplete(ptk.completion.Completer):
                         yield ptk.completion.Completion(i, start_position=-len(last))
                 except engine.EngineError:
                     return
+        elif full.startswith('plugin switch '):
+            trigger_socket_entered = False
+            for socket in self.engine.get_socket_names():
+                if full.rstrip().endswith(socket):
+                    trigger_socket_entered = True
+                    break
+            if trigger_socket_entered:
+                for i in filter(lambda x: x.startswith(last), self.engine.plug_list(socket)):
+                    yield ptk.completion.Completion(i, start_position=-len(last))
+            else:
+                for i in filter(lambda x: x.startswith(last), self.engine.get_socket_names()):
+                    yield ptk.completion.Completion(i, start_position=-len(last))
         elif full.startswith('prove '):
             pass
 
