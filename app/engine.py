@@ -83,13 +83,10 @@ class Session(object):
         self.proof = None
         self.branch = ""
 
-
     def __repr__(self):
         return self.id
 
-
     # Plugin manpiulation
-
 
     def access(self, socket: str) -> Module:
         """Returns the module plugges into a socket of the given name"""
@@ -97,7 +94,6 @@ class Session(object):
             raise EngineError(f"There is no socket named {socket}")
         else:
             return sock()
-            
 
     @EngineChangeLog
     def plug_switch(self, socket_or_old: str, new: str) -> None:
@@ -117,7 +113,8 @@ class Session(object):
                     socket_name = i[0]
                     socket = self.sockets[socket_name]
             if not socket:
-                raise EngineError(f"Socket/plugin {socket_or_old} not found in the program")
+                raise EngineError(
+                    f"Socket/plugin {socket_or_old} not found in the program")
         else:
             socket_name = socket_or_old
         # Plugging
@@ -125,11 +122,10 @@ class Session(object):
             socket.plug(new)
         except (pop.PluginError, pop.LackOfFunctionsError, pop.FunctionInterfaceError, pop.VersionError) as e:
             raise EngineError(str(e))
-            
+
         # Config editing
         self.config['chosen_plugins'][socket_name] = new
         self.write_config()
-
 
     def plug_list(self, socket: str) -> list[str]:
         """Lists all of the plugins available for this socket
@@ -144,7 +140,6 @@ class Session(object):
             raise EngineError(f"There is no socket named {socket}")
         else:
             return sock.find_plugins()
-
 
     def plug_gen(self, socket: str, name: str) -> None:
         """Generates a template of a plugin
@@ -161,24 +156,19 @@ class Session(object):
         else:
             sock.generate_template(name)
 
-
     # config reading and writing
-
 
     def read_config(self):
         logger.debug("Config loading")
         with open(self.config_name, 'r') as target:
             self.config = json.load(target)
 
-
     def write_config(self):
         logger.debug("Config writing")
         with open(self.config_name, 'w') as target:
             json.dump(self.config, target)
 
-
     # Proof manipulation
-
 
     @EngineLog
     @DealWithPOP
@@ -195,28 +185,27 @@ class Session(object):
                 statement, self.access('FormalSystem').get_used_types(), self.defined)
         except self.access('Lexicon').utils.CompilerError as e:
             raise EngineError(str(e))
-        problem = None#self.access('FormalSystem').check_syntax(tokenized)
+        problem = None  # self.access('FormalSystem').check_syntax(tokenized)
         if problem:
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise EngineError(f"Syntax error: {problem}")
         else:
-            tokenized = self.access('FormalSystem').prepare_for_proving(tokenized)
+            tokenized = self.access(
+                'FormalSystem').prepare_for_proving(tokenized)
             self.proof = Tree(tokenized, branch_name='Linen')
             self.branch = 'Linen'
-
 
     @EngineLog
     def reset_proof(self) -> None:
         self.proof = None
         self.branch = ''
 
-
     @EngineLog
     @DealWithPOP
     def deal_contradiction(self, branch_name: str, amount: int) -> tp.Union[None, tuple[int]]:
         """Checks whether a sentence contradicting with the newest one exists"""
         # Tests
-        assert amount>0
+        assert amount > 0
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
@@ -229,7 +218,7 @@ class Session(object):
                     "Proof too short to check for contradictions")
             else:
                 raise e
-        
+
         # Branch checking
         tested = branch[-amount:]
         for num, sent in enumerate(branch[:-1]):
@@ -242,7 +231,6 @@ class Session(object):
                     return num, len(branch)-amount+i
         return None
 
-   
     @EngineLog
     @DealWithPOP
     def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tuple[str]]:
@@ -261,7 +249,7 @@ class Session(object):
                 "There is no proof started")
         if not rule in self.access('FormalSystem').get_rules().keys():
             raise EngineError("No such rule")
-        
+
         # Statement getting and verification
         branch = self.proof.leaves[self.branch].getbranch()[0]
         if statement_ID <= 0 or statement_ID > len(branch):
@@ -272,30 +260,29 @@ class Session(object):
         if not_reusable and statement_ID in self.proof.leaves[self.branch].used:
             return None
         else:
-        
+
             # Rule execution
-            out = self.access('FormalSystem').use_rule(rule, branch[statement_ID-1])
+            out = self.access('FormalSystem').use_rule(
+                rule, branch[statement_ID-1])
 
             if out:
                 old = self.proof.leaves[self.branch]
                 self.proof.leaves[self.branch].append(out)
                 children = old.getchildren()
-                
+
                 if not children:
                     if not_reusable:
                         self.proof.leaves[self.branch].add_used(statement_ID)
                     return (old.name,)
                 else:
-                    if not_reusable:    
+                    if not_reusable:
                         for j in children:
                             j.add_used(statement_ID)
                     return tuple([i.name for i in children])
             else:
                 return None
 
-
     # Proof navigation
-
 
     @DealWithPOP
     def getbranch(self) -> list[list[str], tp.Union[tuple[int, int], None]]:
@@ -307,9 +294,10 @@ class Session(object):
                 f"Branch '{self.branch}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
-        reader = lambda x: self.access('Output').get_readable(x, self.access('Lexicon').get_lexem)
-        return [reader(i) for i in branch], closed
 
+        def reader(x): return self.access('Output').get_readable(
+            x, self.access('Lexicon').get_lexem)
+        return [reader(i) for i in branch], closed
 
     def getbranches(self):
         """Returns all branch names"""
@@ -319,12 +307,10 @@ class Session(object):
 
         return list(self.proof.leaves.keys())
 
-
     @DealWithPOP
     def getrules(self):
         """Returns all rule names"""
         return self.access('FormalSystem').get_rules()
-
 
     @DealWithPOP
     def gettree(self) -> list[str]:
@@ -332,10 +318,9 @@ class Session(object):
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
-        
+
         printed = self.proof.gettree()
         return self.access('Output').write_tree(printed, self.access('Lexicon').get_lexem)
-
 
     def next(self) -> None:
         """Jumps to an open branch"""
@@ -352,13 +337,11 @@ class Session(object):
                 return f"Branch changed to {name}"
         raise EngineError("All branches are closed")
 
-    
     def proof_finished(self):
         """Checks if proof is finished"""
         if not self.proof:
             raise EngineError("There is no proof started")
         return self.proof.is_finished()
-
 
     def jump(self, new: str) -> None:
         """Jumps between branches of the proof
