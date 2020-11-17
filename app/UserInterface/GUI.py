@@ -87,7 +87,7 @@ def widget_new_proof(session: engine.Session) -> None:
 
     x_size, y_size = 400, 100
     x_pos, y_pos = getmiddle(x_size, y_size)
-    with window("new_proof", width=x_size, height=y_size, x_pos=x_pos, y_pos=y_pos, label="Initiate a new proof", on_close=delete_item("new_proof")):
+    with window("new_proof", width=x_size, height=y_size, x_pos=x_pos, y_pos=y_pos, label="Initiate a new proof", on_close=delete_item("new_proof")): # Z jakiegoś powodu za 1. razem to delete item wyrzuca exception, że nic nie usunęło, ale działa więc ¯\_(ツ)_/¯
         set_value('new_proof_buffer', '')
         add_input_text("new_proof_input", label="", callback=new_proof, callback_data=session, on_enter=True, source='new_proof_buffer', width=x_size-10)
         add_button("new_proof_name", callback=new_proof, callback_data=session, label="OK")
@@ -110,12 +110,11 @@ def new_proof(caller_name, session: engine.Session):
 
 def widget_toolbar(session: engine.Session) -> None:
 
-    with menu_bar("main_toolbar"):
+    with menu_bar("main_toolbar", parent='main'):
         with menu("File"):
             add_menu_item("New proof", callback=lambda x,
                           y: widget_new_proof(session))
             add_menu_item("Save")
-
 
         with menu("Settings"):
             with menu("Quick Switch"):
@@ -124,7 +123,7 @@ def widget_toolbar(session: engine.Session) -> None:
                         for j in session.plug_list(i):
                             add_menu_item(f"change_plug_{j}", label=j, callback=lambda x, y: session.plug_switch(
                                 *y), callback_data=(i, j))
-            add_menu_item("Plugin management")
+            add_menu_item("Plugin management"); end()
 
 
 def widget_proof_viewer(session: engine.Session) -> None:
@@ -135,7 +134,6 @@ def widget_proof_viewer(session: engine.Session) -> None:
         with tab_bar('proof_viewer_tab', reorderable=True, callback=change_tab, callback_data=session):
             add_tab('v_tree', label='Tree', leading=True); end()
         add_input_text('proof_view_field', label='', multiline=True, source='proof', readonly=True, width=size[0]-20, height=size[1]-65)
-
 
 def change_tab(tab_name: str, session: engine.Session):
     """used as callback for proof_viewer
@@ -160,7 +158,7 @@ def update_viewer(session: engine.Session):
     """
     for branch_name in session.getbranches():
         if not is_item_active(f'v_{branch_name}'):
-            add_tab(f'v_{branch_name}', label=branch_name, parent='proof_viewer_tab')
+            add_tab(f'v_{branch_name}', label=branch_name, parent='proof_viewer_tab'); end();
     set_value('proof', session.view())
 
 
@@ -178,9 +176,10 @@ def run() -> int:
     set_main_window_title("Larch")
 
 
-    with window("main", horizontal_scrollbar=False):
-        widget_toolbar(session)
-        widget_proof_viewer(session)
+    add_window("main", horizontal_scrollbar=False)
+    widget_toolbar(session)
+    widget_proof_viewer(session)
+
 
 
     start_dearpygui(primary_window="main")
