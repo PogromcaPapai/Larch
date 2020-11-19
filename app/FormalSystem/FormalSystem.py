@@ -5,6 +5,12 @@ Sentence = tp.NewType("Sentence", list[str])
 
 Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
 
+ContextDef = namedtuple('ContextDef', ('variable', 'official', 'docs', 'type_'))
+
+class FormalSystemError(Exception):
+    pass
+
+
 # Rule decorators
 
 
