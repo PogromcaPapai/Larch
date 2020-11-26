@@ -5,7 +5,7 @@ SOCKET = 'FormalSystem'
 VERSION = '0.0.1'
 
 
-def prepare_for_proving(statement: utils.Sentence) -> str:
+def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     pass
 
 

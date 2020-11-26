@@ -3,7 +3,7 @@ import typing as tp
 
 Sentence = tp.NewType("Sentence", list[str])
 
-Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
+Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'context', 'reusable'))
 
 ContextDef = namedtuple('ContextDef', ('variable', 'official', 'docs', 'type_'))
 
@@ -76,7 +76,7 @@ def reduce_brackets(statement: Sentence) -> Sentence:
 
 
 @Modifier
-def quick_bracket_check(reduced: Sentence):
+def quick_bracket_check(reduced: Sentence) -> bool:
     return reduced.count('(') == reduced.count(')')
 
 
@@ -90,14 +90,22 @@ def cleaned(func):
         return returned
     return wrapper
 
+
 # Useful functions for creating rules
 
+def join(tuple_structure: tuple[tuple[str]], ):
+    """
+    docstring
+    """
+    pass
+
+# Creators
 
 @Creator
 def empty_creator(statement: Sentence):
     """Doesn't do nothing; Use when no Creator has been used to generate a tuple structure"""
     return ((statement,),)
-
+ 
 
 @cleaned
 @Creator
@@ -140,6 +148,8 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
     else:
         return ((statement[:middle], statement[middle+1:]),)
 
+
+# Modifiers
 
 @cleaned
 @Modifier
@@ -199,6 +209,65 @@ def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
     else:
         return [f"{prefix}_{lexem}", '(', *statement, ')']
 
+
+@Modifier
+def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
+    """Uses func on a part of the sentence
+    Ex.:
+              onpart(s, sep*, 1, f)
+    x0;x1;x3 ----------------------> x0;f(x1);x2
+
+    *in the Basic Lexicon sep is the type of ;
+
+    :param sentence: sentence to use
+    :type sentence: Sentence
+    :param split_type: type of the splitter
+    :type split_type: str
+    :param sent_num: Number of the subsentence to use the rule on, starting from 0
+    :type sent_num: int
+    :param func: Function tu use on the subsentence
+    :type func: callable
+    """
+
+    split_count = 0
+    for start_split, s in enumerate(sentence):
+        if s.startswith(f"{split_type}_"):
+            split_count += 1
+        if split_count==sent_num:
+            break
+
+    if len(sentence)>=start_split:
+        return []
+
+    end_split = start_split+1
+    while not sentence[end_split].startswith(f"{split_type}_"):
+        if len(sentence)-1<=end_split:
+            break
+        else:
+            end_split += 1
+
+    out = func(sentence[start_split+1:end_split])
+    if out:
+        return sentence[:start_split+1] + out + sentence[end_split:]
+    else:
+        return []
+
+def merge_branch(tuple_structure: tuple[tuple[Sentence]], connection: str):
+    """Connects tuple structures into a single sentence"""
+    maxlen = max((len(i) for i in tuple_structure))
+    finished = []
+    for i in range(maxlen):
+        sent = []
+        for branch in tuple_structure:
+            try:
+                to_append = branch[i]
+            except IndexError:
+                pass
+            else:
+                sent.extend(to_append)
+                sent.append(connection)
+        finished.append(sent[:-1])
+    return tuple(finished)
 
 def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
     """Allows selective function application in the tuple structure

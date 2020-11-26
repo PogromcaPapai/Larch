@@ -279,6 +279,7 @@ class Session(object):
         if not rule in self.access('FormalSystem').get_rules().keys():
             raise EngineError("No such rule")
         
+        # Context checking
         context_info = self.access('FormalSystem').get_needed_context(rule)
         if {i.variable for i in context_info} != set(context.keys()):
             raise EngineError("Wrong context")

@@ -7,7 +7,6 @@ VERSION = '0.0.1'
 
 # Rule definition
 
-
 USED_TYPES = ('and', 'or', 'imp', 'not', 'sentvar')
 PRECEDENCE = {
     'and':3,
@@ -23,6 +22,7 @@ RULES = {
         symbolic="A and B / A; B",
         docs="Needs sentence ID",
         func=lambda x: utils.strip_around(x, 'and', False, PRECEDENCE),
+        context = None,
         reusable=True
     ),
     'false and': utils.Rule(
@@ -30,6 +30,7 @@ RULES = {
         docs="Needs sentence ID",
         func=lambda x: utils.add_prefix(utils.strip_around(
             red_neg(x), 'and', True, PRECEDENCE), 'not', '~'),
+        context = None,
         reusable=False
     ),
     'false or': utils.Rule(
@@ -37,24 +38,28 @@ RULES = {
         docs="Needs sentence ID",
         func=lambda x: utils.add_prefix(utils.strip_around(
             red_neg(x), 'or', False, PRECEDENCE), 'not', '~'),
+        context = None,
         reusable=True
     ),
     'true or': utils.Rule(
         symbolic="(A or B) / A | B",
         docs="Needs sentence ID",
         func=lambda x: utils.strip_around(x, 'or', True, PRECEDENCE),
+        context = None,
         reusable=False
     ),
     'false imp': utils.Rule(
         symbolic="~(A -> B) / A; ~B",
         docs="Needs sentence ID",
         func=lambda x: utils.select(utils.strip_around(red_neg(x),'imp', False, PRECEDENCE), ((False, True),), lambda y: utils.add_prefix(y, 'not', '~')),
+        context = None,
         reusable=True
     ),
     'true imp': utils.Rule(
         symbolic="(A -> B) / ~A | B",
         docs="Needs sentence ID",
         func=lambda x: utils.select(utils.strip_around(x, 'imp', True, PRECEDENCE), ((True,), (False,)), lambda y: utils.add_prefix(y, 'not', '~')),
+        context = None,
         reusable=False
     ),
     'double not': utils.Rule(
@@ -62,6 +67,7 @@ RULES = {
         docs="Needs sentence ID",
         func=lambda x: utils.reduce_prefix(
             utils.reduce_prefix(utils.empty_creator(x), 'not', ('not')), 'not', ('not')),
+        context = None,
         reusable=True
     )
 }
@@ -69,9 +75,8 @@ RULES = {
 
 # __template__
 
-
 @utils.cleaned
-def prepare_for_proving(statement: utils.Sentence) -> str:
+def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     """Cleaning the sentence"""
     return statement
 

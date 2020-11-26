@@ -34,6 +34,10 @@ full_lexicon = dict(
         ('E', 'exists'),
         ('\\/', 'exists'),
         ('exists', 'exists'),
+        
+        # SEQUENT CALCULUS
+        ('=>', 'turnstile'),
+        ('; ', 'sep'),
     ),
     semantic=(
         # =, <, > and other things that need to carry semantics in proofs
