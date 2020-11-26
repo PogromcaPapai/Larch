@@ -226,21 +226,22 @@ def do_use(session, command) -> str:
 
     Arguments:
         - Rule name [str]
-        - Depends on context
+        - Depends on rule context
     """
     if len(command) < 2:
         return "Full rule name needed"
 
     comm_split = command.split()
+    name = " ".join(comm_split[:2])
     out = []
 
     # Context compiling
     context = {}
-    name = " ".join(comm_split[:2])
     c_values = comm_split[2:]
     context_info = session.context_info(name)
     if len(c_values)>len(context_info):
         out.append("Too many args, but the program will continue")
+    
     for i, c in enumerate(context_info):
         if i == len(c_values):
             return "More arguments needed: {}".format(", ".join((i.official for i in context_info[i:])))
@@ -250,8 +251,11 @@ def do_use(session, command) -> str:
             new = vartype(c_values[i])
         except ValueError:
             return f"{c.official} is of a wrong type"
+        
+        # Specific context handling
         if c.type_=='sentenceID':
             new -= 1
+        
         context[c.variable] = new
 
     # Rule usage

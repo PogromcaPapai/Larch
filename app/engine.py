@@ -51,6 +51,17 @@ class EngineError(Exception):
         logger.error(msg)
         super().__init__(msg, *args, **kwargs)
 
+# Input type handling
+
+TYPE_LEXICON = {
+    'sentenceID':int
+}
+
+def type_translator(type_):
+    if isinstance(type_, str):
+        return TYPE_LEXICON[type_]
+    else:
+        return type_
 
 # Session
 
@@ -288,6 +299,7 @@ class Session(object):
         except self.access('FormalSystem').utils.FormalSystemError as e:
             raise EngineError(str(e))
 
+        # Adding to used rules and returning
         if out:
             old = self.proof.leaves[self.branch]
             self.proof.leaves[self.branch].append(out)
@@ -402,10 +414,3 @@ class Session(object):
         return self.SOCKETS
 
 # Misc
-
-TYPE_LEXICON = {
-    'sentenceID':int
-}
-
-def type_translator(type_: str):
-    return TYPE_LEXICON[type_]
