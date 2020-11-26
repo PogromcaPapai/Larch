@@ -36,7 +36,9 @@ def UIlogged(func):
 class ParsingError(Exception):
     pass
 
+
 Command = namedtuple('Command', ('func', 'args', 'docs'))
+
 
 def parser(statement: str, _dict: dict) -> list[Command]:
     """Parses the statement into a list of commands to execute
@@ -132,14 +134,14 @@ def do_exit(session: engine.Session):
 
 def do_plug_switch(session: engine.Session, socket_or_name: str, new: str) -> str:
     """Allows to plug in a plugin to a socket
-    
+
     Arguments:
         - Socket/Old plugin name [str]
         - New plugin's name [str]
     """
     try:
         session.plug_switch(socket_or_name, new)
-    except BaseException as e: # Not sure if this should be rewritten
+    except BaseException as e:  # Not sure if this should be rewritten
         logger.error(f"Exception caught: {e}")
         return str(e)
     else:
@@ -148,7 +150,7 @@ def do_plug_switch(session: engine.Session, socket_or_name: str, new: str) -> st
 
 def do_plug_list(session: engine.Session, socket: str) -> str:
     """Lists all the plugins that can be connected to a socket
-    
+
     Arguments:
         - Socket name [str]
     """
@@ -219,19 +221,46 @@ def do_prove(session: engine.Session, sentence: str) -> str:
         return "Sentence tokenized successfully \nProof initialized"
 
 
-def do_use(session, name1: str, name2: str, statement: int) -> str:
+def do_use(session, command) -> str:
     """Uses a rule in the proof
 
     Arguments:
         - Rule name [str]
-        - ID of the statement to use the rule on [int]
+        - Depends on rule context
     """
+    if len(command) < 2:
+        return "Full rule name needed"
+
+    comm_split = command.split()
+    name = " ".join(comm_split[:2])
     out = []
 
+    # Context compiling
+    context = {}
+    c_values = comm_split[2:]
+    context_info = session.context_info(name)
+    if len(c_values)>len(context_info):
+        out.append("Too many args, but the program will continue")
+    
+    for i, c in enumerate(context_info):
+        if i == len(c_values):
+            return "More arguments needed: {}".format(", ".join((i.official for i in context_info[i:])))
+
+        vartype = engine.type_translator(c.type_)
+        try:
+            new = vartype(c_values[i])
+        except ValueError:
+            return f"{c.official} is of a wrong type"
+        
+        # Specific context handling
+        if c.type_=='sentenceID':
+            new -= 1
+        
+        context[c.variable] = new
+
     # Rule usage
-    name = " ".join((name1, name2))
     try:
-        val = session.use_rule(name, statement)
+        val = session.use_rule(name, context)
     except engine.EngineError as e:
         return str(e)
     if val:
@@ -269,7 +298,7 @@ def do_leave(session) -> str:
 
 def do_jump(session: engine.Session, where: str) -> str:
     """Changes the branch, 
-    
+
     Arguments:
         - Branch name [str/">"/"right"/"left"/"<"]
     """
@@ -281,12 +310,14 @@ def do_jump(session: engine.Session, where: str) -> str:
     except engine.EngineError as e:
         return str(e)
 
+
 def do_next(session: engine.Session):
     """Finds an open branch and jumps to it"""
     try:
         session.next()
     except engine.EngineError as e:
         return str(e)
+
 
 def do_get_rules(session):
     """Returns all of the rules that can be used in this proof system"""
@@ -295,8 +326,10 @@ def do_get_rules(session):
     except engine.EngineError as e:
         return str(e)
 
+
 def do_get_tree(session: engine.Session) -> str:
     return "\n".join(session.gettree())
+
 
 command_dict = OrderedDict({
     # Navigation
@@ -306,8 +339,9 @@ command_dict = OrderedDict({
     'jump': {'comm': do_jump, 'args': [str], 'summary': ''},
     'next': {'comm': do_next, 'args': [], 'summary': ''},
     # Proof manipulation
-    'write': {'comm': do_write, 'args': [str], 'summary': ''},  # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
-    'use': {'comm': do_use, 'args': [str, str, int], 'summary': ''},
+    # Czy zrobić oddzielne save i write? save serializowałoby tylko do wczytania, a write drukowałoby input
+    'write': {'comm': do_write, 'args': [str], 'summary': ''},
+    'use': {'comm': do_use, 'args': 'multiple_strings', 'summary': ''},
     'leave': {'comm': do_leave, 'args': [], 'summary': ''},
     'prove': {'comm': do_prove, 'args': 'multiple_strings', 'summary': ''},
     # Program interaction
@@ -358,7 +392,7 @@ def get_rprompt(session):
         to_show.append(s+spaces*" ")
 
     # Foreground color calculating
-    if max_color(background)>THRESHOLD:
+    if max_color(background) > THRESHOLD:
         foreground = "#000000"
     else:
         foreground = "#FFFFFF"
@@ -371,11 +405,12 @@ def max_color(rgb_color: str) -> int:
     """
     Calculates highest value from the RGB format
     """
-    assert len(rgb_color)==7
+    assert len(rgb_color) == 7
     red = int(rgb_color[1:3], 16)
     green = int(rgb_color[3:5], 16)
     blue = int(rgb_color[5:], 16)
     return max((red, green, blue))
+
 
 def get_toolbar():
     return ptk.HTML('This is a <b><style bg="ansired">Toolbar</style></b>!')
@@ -383,7 +418,7 @@ def get_toolbar():
 
 class Autocomplete(ptk.completion.Completer):
 
-    def __init__(self, session: engine.Session,*args, **kwargs):
+    def __init__(self, session: engine.Session, *args, **kwargs):
         self.engine = session
         super().__init__(*args, **kwargs)
 
@@ -395,23 +430,24 @@ class Autocomplete(ptk.completion.Completer):
                 yield ptk.completion.Completion(i, start_position=-len(full))
         elif full == 'jump ':
             try:
-                for i in ['<','>']+self.engine.getbranches():
+                for i in ['<', '>']+self.engine.getbranches():
                     yield ptk.completion.Completion(i, start_position=-len(last))
             except engine.EngineError:
                 return
         elif full.startswith('use '):
-            if any((full.rstrip().endswith(rule) for rule in self.engine.getrules().keys())):
-                yield ptk.completion.Completion(" ", display=ptk.HTML("<b>Sentence number</b>"))
-            else:
-                try:
-                    for i in filter(lambda x: x.startswith(last), self.engine.getrules()):
-                        yield ptk.completion.Completion(i, start_position=-len(last))
-                except engine.EngineError:
-                    return
+            # if any((full.rstrip().endswith(rule) for rule in self.engine.getrules().keys())):
+            #     yield ptk.completion.Completion(" ", display=ptk.HTML("<b>Sentence number</b>"))
+            # else: #TODO: Write autosuggestion for context
+            try:
+                for i in filter(lambda x: x.startswith(last), self.engine.getrules()):
+                    yield ptk.completion.Completion(i, start_position=-len(last))
+            except engine.EngineError:
+                return
         elif full.startswith('prove '):
             pass
 
 # run
+
 
 def run() -> int:
     """
@@ -422,7 +458,8 @@ def run() -> int:
         int: Exit code; -1 will restart the app
     """
     session = engine.Session('main', 'config.json')
-    ptk.print_formatted_text(ptk.HTML('<b>Logika -> Psychika</b>\nType ? to get command list; type [command]? to get help'))
+    ptk.print_formatted_text(ptk.HTML(
+        '<b>Logika -> Psychika</b>\nType ? to get command list; type [command]? to get help'))
     console = ptk.PromptSession(message=lambda: f"{session.branch+bool(session.branch)*' '}# ", rprompt=lambda: get_rprompt(
         session), complete_in_thread=True, complete_while_typing=True, completer=Autocomplete(session))
     while True:

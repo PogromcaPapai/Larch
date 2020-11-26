@@ -5,6 +5,12 @@ Sentence = tp.NewType("Sentence", list[str])
 
 Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
 
+ContextDef = namedtuple('ContextDef', ('variable', 'official', 'docs', 'type_'))
+
+class FormalSystemError(Exception):
+    pass
+
+
 # Rule decorators
 
 
@@ -119,8 +125,13 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
         elif lvl == 0 and (toktype := s.split('_')[0]) in precedence_keys:
             if border_precedence>precedence[toktype]:
                 return ()
-            elif toktype==border_type and middle is None:
-                middle = i
+            elif border_precedence==precedence[toktype]:
+                if toktype==border_type:
+                    middle = i
+                else:
+                    middle = None
+                    
+
 
     if middle is None:
         return ()

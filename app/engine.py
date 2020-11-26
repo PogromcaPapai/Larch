@@ -51,6 +51,17 @@ class EngineError(Exception):
         logger.error(msg)
         super().__init__(msg, *args, **kwargs)
 
+# Input type handling
+
+TYPE_LEXICON = {
+    'sentenceID':int
+}
+
+def type_translator(type_):
+    if isinstance(type_, str):
+        return TYPE_LEXICON[type_]
+    else:
+        return type_
 
 # Session
 
@@ -243,16 +254,22 @@ class Session(object):
         return None
 
    
+    def context_info(self, rule: str):
+        """Returns context info for a rule"""
+        return self.access('FormalSystem').get_needed_context(rule)
+
     @EngineLog
     @DealWithPOP
-    def use_rule(self, rule: str, statement_ID: int) -> tp.Union[None, tuple[str]]:
-        """Uses a predefined rule on the statement with given ID, returns the names of changed branches if rule was used successfully
+    def use_rule(self, rule: str, context: dict[str, tp.Any]) -> tp.Union[None, tuple[str]]:
+        """Uses a rule of the given name on the current branch of the proof.
+        Context allows to give the FormalSystem additional arguments 
+        Use `self.access('FormalSystem').get_needed_context(rule)` to check for needed context
 
-        :param rule: Rule name (from FormalSystem)
+        :param rule: Rule name (from `FormalSystem` plugin)
         :type rule: str
-        :param statement_ID: Number of the statement in the active branch
-        :type statement_ID: int
-        :return: None/Names of changed branches
+        :param context: Arguments for rule usage
+        :type context: dict[str, tp.Any]
+        :return: Names of new branches
         :rtype: tp.Union[None, tuple[str]]
         """
         # Tests
@@ -262,36 +279,43 @@ class Session(object):
         if not rule in self.access('FormalSystem').get_rules().keys():
             raise EngineError("No such rule")
         
+        context_info = self.access('FormalSystem').get_needed_context(rule)
+        if {i.variable for i in context_info} != set(context.keys()):
+            raise EngineError("Wrong context")
+
         # Statement getting and verification
         branch = self.proof.leaves[self.branch].getbranch()[0]
-        if statement_ID <= 0 or statement_ID > len(branch):
-            raise EngineError("No such statement")
 
-        # Check if was used
+        # Filter used sentences
         not_reusable = not self.access('FormalSystem').check_rule_reuse(rule)
-        if not_reusable and statement_ID in self.proof.leaves[self.branch].used:
-            return None
-        else:
-        
-            # Rule execution
-            out = self.access('FormalSystem').use_rule(rule, branch[statement_ID-1])
+        if not_reusable:
+            for i in range(len(branch)):
+                if i in self.proof.leaves[self.branch].used:
+                    branch[i] = None
+    
+        # Rule execution
+        try:
+            out, statement_ID = self.access('FormalSystem').use_rule(rule, branch, context)
+        except self.access('FormalSystem').utils.FormalSystemError as e:
+            raise EngineError(str(e))
 
-            if out:
-                old = self.proof.leaves[self.branch]
-                self.proof.leaves[self.branch].append(out)
-                children = old.getchildren()
-                
-                if not children:
-                    if not_reusable:
-                        self.proof.leaves[self.branch].add_used(statement_ID)
-                    return (old.name,)
-                else:
-                    if not_reusable:    
-                        for j in children:
-                            j.add_used(statement_ID)
-                    return tuple([i.name for i in children])
+        # Adding to used rules and returning
+        if out:
+            old = self.proof.leaves[self.branch]
+            self.proof.leaves[self.branch].append(out)
+            children = old.getchildren()
+            
+            if not children:
+                if not_reusable:
+                    self.proof.leaves[self.branch].add_used(statement_ID)
+                return (old.name,)
             else:
-                return None
+                if not_reusable:    
+                    for j in children:
+                        j.add_used(statement_ID)
+                return tuple([i.name for i in children])
+        else:
+            return None
 
 
     # Proof navigation
@@ -388,3 +412,5 @@ class Session(object):
 
     def get_socket_names(self):
         return self.SOCKETS
+
+# Misc
