@@ -16,17 +16,66 @@ PRECEDENCE = {
     'turnstile':1
 }
 
+
 def rule_left_and(sentence, num):
+    """ A,B,... => ...
+        ______________
+        A&B,... => ...
+    """ 
     return ut.merge_branch(ut.select(ut.strip_around(sentence, 'turnstile', True, PRECEDENCE), ((True,), (False,)), lambda x: ut.on_part(x, 'sep', num, lambda y: ut.merge_branch(ut.strip_around(y, 'and', True, PRECEDENCE), 'sep_;'))), 'turnstile_=>')
 
+
+def rule_right_and(sentence, num):
+    """ ... => A,...  ... => B,...
+        __________________________
+        ... => A&B,...
+    """
+    return ut.on_part(sentence, 'turnstile', 1, lambda x: ut.on_part(x, 'sep', num, lambda y: ut.strip_around(y, 'and', True, PRECEDENCE)))
+
+
+def rule_left_or(sentence, num):
+    """ A,... => ...  B,... => ...
+        __________________________
+        AvB,... => ...
+    """
+    return ut.on_part(sentence, 'turnstile', 0, lambda x: ut.on_part(x, 'sep', num, lambda y: ut.strip_around(y, 'or', True, PRECEDENCE)))
+
+
 def rule_right_or(sentence, num):
+    """ ... => A,B,...
+        ______________
+        ... => AvB,...
+    """ 
     return ut.merge_branch(ut.select(ut.strip_around(sentence, 'turnstile', True, PRECEDENCE), ((False,), (True,)), lambda x: ut.on_part(x, 'sep', num, lambda y: ut.merge_branch(ut.strip_around(y, 'or', True, PRECEDENCE), 'sep_;'))), 'turnstile_=>')
 
+
 RULES = {
-    'Left and':ut.Rule(
+    'left and':ut.Rule(
         symbolic="",
         docs="",
         func=rule_left_and,
+        context = [ut.ContextDef(
+            variable='partID',
+            official='Subsentence number',
+            docs='',
+            type_=int
+            )]
+    ),
+    'right and':ut.Rule(
+        symbolic="",
+        docs="",
+        func=rule_right_and,
+        context = [ut.ContextDef(
+            variable='partID',
+            official='Subsentence number',
+            docs='',
+            type_=int
+            )]
+    ),
+    'right or':ut.Rule(
+        symbolic="",
+        docs="",
+        func=rule_right_or,
         context = [ut.ContextDef(
             variable='partID',
             official='Subsentence number',
@@ -90,6 +139,6 @@ def use_rule(name: str, branch: list[ut.Sentence], context: dict[str, tp.Any]) -
     # Rule usage
     fin = rule.func(sent, **context)
     if fin:
-        return fin, statement_ID
+        return fin, len(branch-1)
     else:
         return None, -1

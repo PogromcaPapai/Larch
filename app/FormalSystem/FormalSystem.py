@@ -210,7 +210,6 @@ def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
         return [f"{prefix}_{lexem}", '(', *statement, ')']
 
 
-# Modifier/Creator depends on the func argument; add decorator when using the function
 def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
     """Uses func on a part of the sentence
     Ex.:
