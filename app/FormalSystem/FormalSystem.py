@@ -5,14 +5,15 @@ Sentence = tp.NewType("Sentence", list[str])
 
 Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'context', 'reusable'))
 
-ContextDef = namedtuple('ContextDef', ('variable', 'official', 'docs', 'type_'))
+ContextDef = namedtuple(
+    'ContextDef', ('variable', 'official', 'docs', 'type_'))
+
 
 class FormalSystemError(Exception):
     pass
 
 
 # Rule decorators
-
 
 def Creator(func):
     """Will allow the function to generate new tuple structures"""
@@ -40,7 +41,6 @@ def Modifier(func):
 
 
 # Formating and cleaning
-
 
 @Modifier
 def reduce_brackets(statement: Sentence) -> Sentence:
@@ -99,13 +99,14 @@ def join(tuple_structure: tuple[tuple[str]], ):
     """
     pass
 
+
 # Creators
 
 @Creator
 def empty_creator(statement: Sentence):
     """Doesn't do nothing; Use when no Creator has been used to generate a tuple structure"""
     return ((statement,),)
- 
+
 
 @cleaned
 @Creator
@@ -131,15 +132,13 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
         elif s == ')':
             lvl -= 1
         elif lvl == 0 and (toktype := s.split('_')[0]) in precedence_keys:
-            if border_precedence>precedence[toktype]:
+            if border_precedence > precedence[toktype]:
                 return ()
-            elif border_precedence==precedence[toktype]:
-                if toktype==border_type:
+            elif border_precedence == precedence[toktype]:
+                if toktype == border_type:
                     middle = i
                 else:
                     middle = None
-                    
-
 
     if middle is None:
         return ()
@@ -153,7 +152,8 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
 
 @cleaned
 @Modifier
-def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence: #TODO: Needs optimalization
+# TODO: Needs optimalization
+def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
     """ Deletes a prefix if it closes the rest of the sentence
 
     :param statement: Modified sentence
@@ -166,7 +166,7 @@ def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -
     :return: Modified sentence
     :rtype: Sentence
     """
-    
+
     assert isinstance(statement, list)
 
     if statement[0].startswith(prefix_type):
@@ -210,7 +210,7 @@ def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
         return [f"{prefix}_{lexem}", '(', *statement, ')']
 
 
-@Modifier
+# Modifier/Creator depends on the func argument; add decorator when using the function
 def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
     """Uses func on a part of the sentence
     Ex.:
@@ -233,24 +233,27 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
     for start_split, s in enumerate(sentence):
         if s.startswith(f"{split_type}_"):
             split_count += 1
-        if split_count==sent_num:
+        if split_count == sent_num:
             break
 
-    if len(sentence)>=start_split:
+    if len(sentence) >= start_split:
         return []
 
     end_split = start_split+1
     while not sentence[end_split].startswith(f"{split_type}_"):
-        if len(sentence)-1<=end_split:
+        if len(sentence)-1 <= end_split:
             break
         else:
             end_split += 1
 
     out = func(sentence[start_split+1:end_split])
-    if out:
+    if isinstance(out, list):
         return sentence[:start_split+1] + out + sentence[end_split:]
+    elif isinstance(out, tuple):
+        return tuple([tuple([sentence[:start_split+1]+i + sentence[end_split:] for i in branch]) for branch in out])
     else:
         return []
+
 
 def merge_branch(tuple_structure: tuple[tuple[Sentence]], connection: str):
     """Connects tuple structures into a single sentence"""
@@ -268,6 +271,7 @@ def merge_branch(tuple_structure: tuple[tuple[Sentence]], connection: str):
                 sent.append(connection)
         finished.append(sent[:-1])
     return tuple(finished)
+
 
 def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
     """Allows selective function application in the tuple structure
@@ -306,8 +310,9 @@ def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]
     # Tests
     if not tuple_structure:
         return ()
-    assert len(tuple_structure)==len(selection)
-    assert all((len(tuple_structure[i])==len(selection[i]) for i in range(len(selection))))
+    assert len(tuple_structure) == len(selection)
+    assert all((len(tuple_structure[i]) == len(
+        selection[i]) for i in range(len(selection))))
 
     # Execution
     return _select(tuple_structure, selection, func)

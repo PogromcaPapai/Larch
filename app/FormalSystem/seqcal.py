@@ -19,6 +19,9 @@ PRECEDENCE = {
 def rule_left_and(sentence, num):
     return ut.merge_branch(ut.select(ut.strip_around(sentence, 'turnstile', True, PRECEDENCE), ((True,), (False,)), lambda x: ut.on_part(x, 'sep', num, lambda y: ut.merge_branch(ut.strip_around(y, 'and', True, PRECEDENCE), 'sep_;'))), 'turnstile_=>')
 
+def rule_right_or(sentence, num):
+    return ut.merge_branch(ut.select(ut.strip_around(sentence, 'turnstile', True, PRECEDENCE), ((False,), (True,)), lambda x: ut.on_part(x, 'sep', num, lambda y: ut.merge_branch(ut.strip_around(y, 'or', True, PRECEDENCE), 'sep_;'))), 'turnstile_=>')
+
 RULES = {
     'Left and':ut.Rule(
         symbolic="",
