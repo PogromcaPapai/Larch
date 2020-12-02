@@ -211,7 +211,7 @@ def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
 
 
 def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
-    """Uses func on a part of the sentence
+    """Uses func on a part of the sentence; It's possible it doesn't work
     Ex.:
               onpart(s, sep*, 1, f)
     x0;x1;x3 ----------------------> x0;f(x1);x2
@@ -235,27 +235,30 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
         if split_count == sent_num:
             break
 
-    if len(sentence) >= start_split:
+    if len(sentence) <= start_split or split_count<sent_num:
         return []
 
     end_split = start_split+1
-    while not sentence[end_split].startswith(f"{split_type}_"):
-        if len(sentence)-1 <= end_split:
-            break
-        else:
-            end_split += 1
+    while end_split<len(sentence) and not sentence[end_split].startswith(f"{split_type}_"):
+        end_split += 1
 
-    out = func(sentence[start_split+1:end_split])
+    if len(sentence)-1 <= end_split:
+        out = func(sentence[start_split+(split_count!=0):])
+    else:
+        out = func(sentence[start_split+(split_count!=0):end_split])
+    
     if isinstance(out, list):
-        return sentence[:start_split+1] + out + sentence[end_split:]
+        return sentence[:start_split+(split_count!=0)] + out + sentence[end_split:]
     elif isinstance(out, tuple):
-        return tuple([tuple([sentence[:start_split+1]+i + sentence[end_split:] for i in branch]) for branch in out])
+        return tuple([tuple([sentence[:start_split+(split_count!=0)]+i + sentence[end_split:] for i in branch]) for branch in out])
     else:
         return []
 
 
 def merge_branch(tuple_structure: tuple[tuple[Sentence]], connection: str):
-    """Connects tuple structures into a single sentence"""
+    """Connects tuple structures into a single sentence; It's possible it doesn't work"""
+    if not tuple_structure:
+        return []
     maxlen = max((len(i) for i in tuple_structure))
     finished = []
     for i in range(maxlen):
