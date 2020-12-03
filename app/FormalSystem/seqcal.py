@@ -22,7 +22,7 @@ def rule_left_and(sentence, num):
         ______________
         A&B,... => ...
     """ 
-    return utils.merge_branch(utils.select(utils.strip_around(sentence, 'turnstile', True, PRECEDENCE), ((True,), (False,)), lambda x: utils.on_part(x, 'sep', num, lambda y: utils.merge_branch(utils.strip_around(y, 'and', True, PRECEDENCE), 'sep_;'))), 'turnstile_=>')
+    return utils.on_part(sentence, 'turnstile', 0, lambda x: utils.on_part(x, 'sep', num, lambda y: utils.merge_branch(utils.strip_around(y, 'and', True, PRECEDENCE), 'sep_;')))
 
 
 def rule_right_and(sentence, num):
@@ -46,7 +46,7 @@ def rule_right_or(sentence, num):
         ______________
         ... => AvB,...
     """ 
-    return utils.merge_branch(utils.select(utils.strip_around(sentence, 'turnstile', True, PRECEDENCE), ((False,), (True,)), lambda x: utils.on_part(x, 'sep', num, lambda y: utils.merge_branch(utils.strip_around(y, 'or', True, PRECEDENCE), 'sep_;'))), 'turnstile_=>')
+    return utils.on_part(sentence, 'turnstile', 1, lambda x: utils.on_part(x, 'sep', num, lambda y: utils.merge_branch(utils.strip_around(y, 'or', True, PRECEDENCE), 'sep_;')))
 
 
 RULES = {
@@ -54,6 +54,18 @@ RULES = {
         symbolic="",
         docs="",
         func=rule_left_and,
+        reusable=False,
+        context = [utils.ContextDef(
+            variable='partID',
+            official='Subsentence number',
+            docs='',
+            type_=int
+            )]
+    ),
+    'left or':utils.Rule(
+        symbolic="",
+        docs="",
+        func=rule_left_or,
         reusable=False,
         context = [utils.ContextDef(
             variable='partID',
@@ -147,7 +159,7 @@ def use_rule(name: str, branch: list[utils.Sentence], context: dict[str, tp.Any]
 
     # Rule usage
     fin = rule.func(sent, *context.values())
-    if fin:
+    if not fin is None:
         return fin, len(branch)-1
     else:
         return None, -1

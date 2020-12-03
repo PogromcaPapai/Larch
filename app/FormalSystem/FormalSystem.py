@@ -30,8 +30,8 @@ def Modifier(func):
         if isinstance(statement, tuple):
             calculated = tuple([wrapper(i, *args, **kwargs)
                                 for i in statement])
-            if any((not i for i in calculated)):
-                return ()
+            if any((i is None for i in calculated)):
+                return None
             else:
                 return calculated
         else:
@@ -133,7 +133,7 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
             lvl -= 1
         elif lvl == 0 and (toktype := s.split('_')[0]) in precedence_keys:
             if border_precedence > precedence[toktype]:
-                return ()
+                return None
             elif border_precedence == precedence[toktype]:
                 if toktype == border_type:
                     middle = i
@@ -141,7 +141,7 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
                     middle = None
 
     if middle is None:
-        return ()
+        return None
     elif split:
         return ((statement[:middle],), (statement[middle+1:],))
     else:
@@ -180,14 +180,14 @@ def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -
         else:
             reduction = reduce_brackets(statement_no_prefix)
             if reduction.count("(") == statement_no_prefix.count("("):
-                return []
+                return None
             elif reduction.count("(") < statement_no_prefix.count("("):
                 return reduce_brackets(statement[1:])
             else:
                 raise Exception(
                     "After bracket reduction the statement_no_prefix gained a bracket")
     else:
-        return []
+        return None
 
 
 @Modifier
@@ -211,7 +211,7 @@ def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
 
 
 def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
-    """Uses func on a part of the sentence; It's possible it doesn't work
+    """Uses func on a part of the sentence
     Ex.:
               onpart(s, sep*, 1, f)
     x0;x1;x3 ----------------------> x0;f(x1);x2
@@ -236,7 +236,7 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
             break
 
     if len(sentence) <= start_split or split_count<sent_num:
-        return []
+        return None
 
     end_split = start_split+1
     while end_split<len(sentence) and not sentence[end_split].startswith(f"{split_type}_"):
@@ -250,15 +250,19 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
     if isinstance(out, list):
         return sentence[:start_split+(split_count!=0)] + out + sentence[end_split:]
     elif isinstance(out, tuple):
-        return tuple([tuple([sentence[:start_split+(split_count!=0)]+i + sentence[end_split:] for i in branch]) for branch in out])
+        l = list()
+        for branch in out:
+            assert isinstance(branch, tuple)
+            l.append(tuple([sentence[:start_split+(split_count!=0)] + i + sentence[end_split:] for i in branch]))
+        return tuple(l)
     else:
-        return []
+        return None
 
 
 def merge_branch(tuple_structure: tuple[tuple[Sentence]], connection: str):
     """Connects tuple structures into a single sentence; It's possible it doesn't work"""
     if not tuple_structure:
-        return []
+        return None
     maxlen = max((len(i) for i in tuple_structure))
     finished = []
     for i in range(maxlen):
@@ -272,7 +276,7 @@ def merge_branch(tuple_structure: tuple[tuple[Sentence]], connection: str):
                 sent.extend(to_append)
                 sent.append(connection)
         finished.append(sent[:-1])
-    return tuple(finished)
+    return (tuple(finished),)
 
 
 def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
@@ -311,7 +315,7 @@ def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]
 
     # Tests
     if not tuple_structure:
-        return ()
+        return None
     assert len(tuple_structure) == len(selection)
     assert all((len(tuple_structure[i]) == len(
         selection[i]) for i in range(len(selection))))
