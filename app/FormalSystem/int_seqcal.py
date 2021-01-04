@@ -36,7 +36,6 @@ def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
     return part
 
 
-
 def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str):
     """
     Merges two tuple structures into one
@@ -170,7 +169,34 @@ def rule_right_imp(left: utils.Sentence, right: utils.Sentence, num):
     split = split[0]
     return ((split[0]+sep(left)+left,),), ((split[1],),)
 
+def rule_left_strong(left: utils.Sentence, right: utils.Sentence, num):
+    """ ..., A, A => ...
+        ________________
+        ..., A => ...
+    """
+    try:
+        conj = get_part(right, 'sep', num-1)
+    except IndexError:
+        return (None, None)
+    
+    try:
+        conj = get_part(right, 'sep', num-1)
+    except IndexError:
+        return (None, None)
+    
+    return ((conj+sep()+conj+sep(left)+left,),), ((right,),)
 
+def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num):
+    """ ... => ...
+        ______________
+        ..., A => ...
+    """
+    try:
+        conj = get_part(right, 'sep', num-1)
+    except IndexError:
+        return (None, None)
+    
+    return ((left,),), ((right,),)
 
 RULES = {
     'left and': utils.Rule(
