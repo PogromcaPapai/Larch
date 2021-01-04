@@ -239,6 +239,8 @@ def do_use(session, command) -> str:
     context = {}
     c_values = comm_split[2:]
     context_info = session.context_info(name)
+    if context_info is None:
+        return "No such rule"
     if len(c_values)>len(context_info):
         out.append("Too many args, but the program will continue")
     

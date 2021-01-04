@@ -1,1 +1,1 @@
-{"chosen_plugins": {"UserInterface": "CLI", "Lexicon": "basic", "FormalSystem": "seqcal", "Output": "text"}}
+{"chosen_plugins": {"UserInterface": "CLI", "Lexicon": "basic", "FormalSystem": "int_seqcal", "Output": "text"}}

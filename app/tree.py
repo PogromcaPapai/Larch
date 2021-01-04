@@ -32,7 +32,7 @@ class Tree(object):
     #     cls.child_limit = amount
 
 
-    def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: tp.Set[int] = set()):
+    def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: set[int] = None):
         """The representation of one node in a tree; non-diverging rules add to this one's statement list. It's accounted for in the interface
 
         :param start_statement: The first statement to insert into the node
@@ -53,7 +53,10 @@ class Tree(object):
         self.parent = parent
         self.children = []
         self.closed = closed
-        self.used = used
+        if used is None:
+            self.used = set()
+        else:    
+            self.used = used
         if leaves_dict is None:
             leaves_dict = OrderedDict()
         leaves_dict[branch_name] = self

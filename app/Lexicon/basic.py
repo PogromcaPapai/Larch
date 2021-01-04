@@ -37,7 +37,7 @@ full_lexicon = dict(
         
         # SEQUENT CALCULUS
         ('=>', 'turnstile'),
-        ('; ', 'sep'),
+        (';', 'sep'),
     ),
     semantic=(
         # =, <, > and other things that need to carry semantics in proofs

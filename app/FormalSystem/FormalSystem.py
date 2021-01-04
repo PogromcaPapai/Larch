@@ -34,6 +34,8 @@ def Modifier(func):
                 return None
             else:
                 return calculated
+        elif statement is None:
+            return None
         else:
             return func(statement[:], *args, **kwargs)
 
@@ -257,27 +259,6 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
         return tuple(l)
     else:
         return None
-
-
-def merge_branch(tuple_structure: tuple[tuple[Sentence]], connection: str):
-    """Connects tuple structures into a single sentence; It's possible it doesn't work"""
-    if not tuple_structure:
-        return None
-    maxlen = max((len(i) for i in tuple_structure))
-    finished = []
-    for i in range(maxlen):
-        sent = []
-        for branch in tuple_structure:
-            try:
-                to_append = branch[i]
-            except IndexError:
-                pass
-            else:
-                sent.extend(to_append)
-                sent.append(connection)
-        finished.append(sent[:-1])
-    return (tuple(finished),)
-
 
 def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
     """Allows selective function application in the tuple structure
