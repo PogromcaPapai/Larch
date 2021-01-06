@@ -285,7 +285,7 @@ class Session(object):
             raise EngineError("Wrong context")
 
         # Statement getting and verification
-        branch = self.proof.leaves[self.branch].getbranch()[0]
+        branch = self.proof.leaves[self.branch].getbranch()[0][:]
 
         # Filter used sentences
         not_reusable = not self.access('FormalSystem').check_rule_reuse(rule)
@@ -301,7 +301,7 @@ class Session(object):
             raise EngineError(str(e))
 
         # Adding to used rules and returning
-        if out:
+        if out is not None:
             old = self.proof.leaves[self.branch]
             self.proof.leaves[self.branch].append(out)
             children = old.getchildren()

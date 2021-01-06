@@ -5,7 +5,7 @@ SOCKET = 'FormalSystem'
 VERSION = '0.0.1'
 
 
-USED_TYPES = ('and', 'or', 'imp', 'sentvar', 'sep', 'turnstile')
+USED_TYPES = ('and', 'or', 'imp', 'sentvar', 'sep', 'turnstile','falsum')
 PRECEDENCE = {
     'and': 4,
     'or': 4,
@@ -66,6 +66,13 @@ def sep(part: utils.Sentence = None) -> list[str]:
 
 
 # Rule definition
+
+"""TODO:
+
+MOŻNA USUNĄĆ Z RIGHT ARGUMENT, BO TYLKO JEDEN ELEMENT JEST
+jakiś błąd jest i czasem się duplikują ";"
+
+"""
 
 def rule_left_and(left: utils.Sentence, right: utils.Sentence, num):
     """ A,B,... => ...
