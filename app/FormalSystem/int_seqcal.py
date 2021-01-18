@@ -19,11 +19,13 @@ def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
     Returns n-th part of the sentence (split_types is the type of separator)
     """
     split_count = 0
-    for start_split, s in enumerate(sentence):
+    start_split = 0
+    for s in sentence:
         if s.startswith(f"{split_type}_"):
             split_count += 1
         if split_count == sent_num:
             break
+        start_split += 1
 
     if len(sentence) <= start_split or split_count<sent_num:
         raise IndexError("sent_num is too big")
@@ -31,8 +33,12 @@ def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
     part = []
     if split_count>0:
         sentence.pop(start_split)
+    
     while start_split<len(sentence) and not sentence[start_split].startswith(f"{split_type}_"):
         part.append(sentence.pop(start_split))
+
+    if len(sentence)>0 and split_count == 0:
+        sentence.pop(start_split)
     return part
 
 
@@ -59,7 +65,7 @@ def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str
 
 
 def sep(part: utils.Sentence = None) -> list[str]:
-    if part is None or len(part)>0:
+    if part is None or (len(part)>0 and not part[0].startswith('sep_;')):
         return ['sep_;']
     else:
         return []
@@ -67,14 +73,8 @@ def sep(part: utils.Sentence = None) -> list[str]:
 
 # Rule definition
 
-"""TODO:
 
-MOŻNA USUNĄĆ Z RIGHT ARGUMENT, BO TYLKO JEDEN ELEMENT JEST
-jakiś błąd jest i czasem się duplikują ";"
-
-"""
-
-def rule_left_and(left: utils.Sentence, right: utils.Sentence, num):
+def rule_left_and(left: utils.Sentence, right: utils.Sentence, num: int):
     """ A,B,... => ...
         ______________
         A&B,... => ...
@@ -91,12 +91,12 @@ def rule_left_and(left: utils.Sentence, right: utils.Sentence, num):
     return ((split[0]+sep()+split[1]+sep(left)+left,),), ((right,),)
 
 
-def rule_right_and(left: utils.Sentence, right: utils.Sentence, num):
+def rule_right_and(left: utils.Sentence, right: utils.Sentence):
     """ ... => A      ... => B
         __________________________
         ... => A&B
     """
-    conj = get_part(right, 'sep', num-1)
+    conj = get_part(right, 'sep', 0)
     if conj is None:
         return (None, None)
 
@@ -106,7 +106,7 @@ def rule_right_and(left: utils.Sentence, right: utils.Sentence, num):
     split = split[0]
     return ((left,),(left,),), ((split[0],),(split[1],),)
 
-def rule_left_or(left: utils.Sentence, right: utils.Sentence, num):
+def rule_left_or(left: utils.Sentence, right: utils.Sentence, num: int):
     """ A,... => ...  B,... => ...
         __________________________
         AvB,... => ...
@@ -123,7 +123,7 @@ def rule_left_or(left: utils.Sentence, right: utils.Sentence, num):
     return ((split[0]+sep(left)+left,),(split[1]+sep(left)+left,),), ((right,),(right,),)
 
 
-def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, num: int):
+def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str):
     """ ... => (A,B)[side]
         ______________
         ... => AvB
@@ -132,7 +132,7 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, num: i
         return (None, None)
 
     try:
-        conj = get_part(right, 'sep', num-1)
+        conj = get_part(right, 'sep', 0)
     except IndexError:
         return (None, None)
     
@@ -143,7 +143,7 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, num: i
     return ((left,),), ((split[side],),)
 
 
-def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num):
+def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num: int):
     """ A -> B, ... => A    B,... => ...
         ________________________________
         A -> B,... => ...
@@ -160,13 +160,13 @@ def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num):
     return ((conj+sep(left)+left,),(split[1]+sep(left)+left,),), ((split[0],),(right,),)
 
 
-def rule_right_imp(left: utils.Sentence, right: utils.Sentence, num):
+def rule_right_imp(left: utils.Sentence, right: utils.Sentence):
     """ ..., A => B
         ______________
         ... => A -> B
     """
     try:
-        conj = get_part(right, 'sep', num-1)
+        conj = get_part(right, 'sep', 0)
     except IndexError:
         return (None, None)
     
@@ -176,30 +176,25 @@ def rule_right_imp(left: utils.Sentence, right: utils.Sentence, num):
     split = split[0]
     return ((split[0]+sep(left)+left,),), ((split[1],),)
 
-def rule_left_strong(left: utils.Sentence, right: utils.Sentence, num):
+def rule_left_strong(left: utils.Sentence, right: utils.Sentence, num: int):
     """ ..., A, A => ...
         ________________
         ..., A => ...
     """
     try:
-        conj = get_part(right, 'sep', num-1)
-    except IndexError:
-        return (None, None)
-    
-    try:
-        conj = get_part(right, 'sep', num-1)
+        conj = get_part(left, 'sep', num-1)
     except IndexError:
         return (None, None)
     
     return ((conj+sep()+conj+sep(left)+left,),), ((right,),)
 
-def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num):
+def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num: int):
     """ ... => ...
         ______________
         ..., A => ...
     """
     try:
-        conj = get_part(right, 'sep', num-1)
+        conj = get_part(left, 'sep', num-1)
     except IndexError:
         return (None, None)
     
@@ -235,12 +230,7 @@ RULES = {
         docs="",
         func=rule_right_and,
         reusable=False,
-        context=[utils.ContextDef(
-            variable='partID',
-            official='Subsentence number',
-            docs='',
-            type_=int
-        )]
+        context=[]
     ),
     'right or': utils.Rule(
         symbolic="",
@@ -253,12 +243,6 @@ RULES = {
             official='Side of the or operation',
             docs='l/r',
             type_=str
-        ),
-        utils.ContextDef(
-            variable='partID',
-            official='Subsentence number',
-            docs='',
-            type_=int,
         )]
     ),
     'left imp': utils.Rule(
@@ -278,13 +262,32 @@ RULES = {
         docs="",
         func=rule_right_imp,
         reusable=False,
+        context=[]
+    ),
+    'left weak': utils.Rule(
+        symbolic="",
+        docs="",
+        func=rule_left_weak,
+        reusable=True,
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
             docs='',
             type_=int
         )]
-    )
+    ),
+    'left strong': utils.Rule(
+        symbolic="",
+        docs="",
+        func=rule_left_strong,
+        reusable=True,
+        context=[utils.ContextDef(
+            variable='partID',
+            official='Subsentence number',
+            docs='',
+            type_=int
+        )]
+    ),
 }
 
 # __template__
