@@ -284,19 +284,13 @@ class Session(object):
         if {i.variable for i in context_info} != set(context.keys()):
             raise EngineError("Wrong context")
 
-        # Statement getting and verification
+        # Statement and used retrieving
         branch = self.proof.leaves[self.branch].getbranch()[0][:]
-
-        # Filter used sentences
-        not_reusable = not self.access('FormalSystem').check_rule_reuse(rule)
-        if not_reusable:
-            for i in range(len(branch)):
-                if i in self.proof.leaves[self.branch].used:
-                    branch[i] = None
+        used = self.proof.leaves[self.branch].get_used()
     
         # Rule execution
         try:
-            out, statement_ID = self.access('FormalSystem').use_rule(rule, branch, context)
+            out, used_extention = self.access('FormalSystem').use_rule(rule, branch, used, context)
         except self.access('FormalSystem').utils.FormalSystemError as e:
             raise EngineError(str(e))
 
@@ -307,13 +301,12 @@ class Session(object):
             children = old.getchildren()
             
             if not children:
-                if not_reusable:
-                    self.proof.leaves[self.branch].add_used(statement_ID)
+                assert len(used_extention)==1, "Wrong used_extention length"
+                self.proof.leaves[self.branch].add_used(used_extention[0])
                 return (old.name,)
             else:
-                if not_reusable:    
-                    for j in children:
-                        j.add_used(statement_ID)
+                for j, statement_ID in zip(children, used_extention):
+                    j.add_used(statement_ID)
                 return tuple([i.name for i in children])
         else:
             return None

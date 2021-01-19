@@ -14,6 +14,27 @@ PRECEDENCE = {
     'turnstile': 1
 }
 
+def is_Sublist(l, s):
+	sub_set = False
+	if s == []:
+		sub_set = True
+	elif s == l:
+		sub_set = True
+	elif len(s) > len(l):
+		sub_set = False
+
+	else:
+		for i in range(len(l)):
+			if l[i] == s[0]:
+				n = 1
+				while (n < len(s)) and (l[i+n] == s[n]):
+					n += 1
+				
+				if n == len(s):
+					sub_set = True
+
+	return sub_set
+
 def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
     """
     Returns n-th part of the sentence (split_types is the type of separator)
@@ -205,7 +226,7 @@ RULES = {
         symbolic="",
         docs="",
         func=rule_left_and,
-        reusable=False,
+        reusable=None, # Not needed
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
@@ -217,7 +238,7 @@ RULES = {
         symbolic="",
         docs="",
         func=rule_left_or,
-        reusable=False,
+        reusable=None, # Not needed
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
@@ -229,14 +250,14 @@ RULES = {
         symbolic="",
         docs="",
         func=rule_right_and,
-        reusable=False,
+        reusable=None, # Not needed
         context=[]
     ),
     'right or': utils.Rule(
         symbolic="",
         docs="",
         func=rule_right_or,
-        reusable=False,
+        reusable=None, # Not needed
         context=[
         utils.ContextDef(
             variable='conn_side',
@@ -249,7 +270,7 @@ RULES = {
         symbolic="",
         docs="",
         func=rule_left_imp,
-        reusable=True,
+        reusable=None, # Not needed
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
@@ -261,14 +282,14 @@ RULES = {
         symbolic="",
         docs="",
         func=rule_right_imp,
-        reusable=False,
+        reusable=None, # Not needed
         context=[]
     ),
     'left weak': utils.Rule(
         symbolic="",
         docs="",
         func=rule_left_weak,
-        reusable=True,
+        reusable=None, # Not needed
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
@@ -280,7 +301,7 @@ RULES = {
         symbolic="",
         docs="",
         func=rule_left_strong,
-        reusable=True,
+        reusable=None, # Not needed
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
@@ -309,12 +330,6 @@ def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
     return True
 
 
-def check_rule_reuse(rule_name: str) -> bool:
-    """Checks whether the rule can be reused on one statement in one branch"""
-    if (r := RULES.get(rule_name, None)):
-        return r.reusable
-
-
 def get_rules() -> dict[str, str]:
     """Returns the names and documentation of the rules"""
     rule_dict = dict()
@@ -335,7 +350,7 @@ def get_used_types() -> tuple[str]:
     return USED_TYPES
 
 
-def use_rule(name: str, branch: list[utils.Sentence], context: dict[str, tp.Any]) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
+def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence], context: dict[str, tp.Any]) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
     """Uses a rule of the given name on the provided branch.
         Context allows to give the FormalSystem additional arguments. 
         Use `self.access('FormalSystem').get_needed_context(rule)` to check for needed context
@@ -345,21 +360,37 @@ def use_rule(name: str, branch: list[utils.Sentence], context: dict[str, tp.Any]
     :param branch: List of sentences in a branch
     :type branch: list[utils.Sentence]
     :param context: Additional arguments
+    :param used: Set of sentences that were already used
+    :type used: set[utils.Sentence]
     :type context: dict[str,tp.Any]
     :return: Generated tuple structure with the sentences and sentence ID
     :rtype: tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]
     """
     rule = RULES[name]
 
-    if branch[-1] is None:
-        raise utils.FormalSystemError("This sentence was already used in a non-reusable rule")
-
     start = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)
     start_left, start_right = start[0]
 
+    # Loop detection
+    history = None
+    if name == "left imp":
+        if tuple(start_right) in used:
+            raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
+        else:
+            history = [start_right, 0]
+    elif name == 'left or':
+        history = [-1, -1]
+    elif name == 'right imp' and not is_Sublist(start_left, start_right):
+        history = [-1]
+
     # Rule usage
     left, right = rule.func(start_left, start_right, *context.values())
+
+    # Outcome return
     if not (left is None or right is None):
-        return merge_tupstruct(left, right, "turnstile_=>"), len(branch)-1
+        # History length multiplication
+        if not history:
+            history = [0]*len(left)
+        return merge_tupstruct(left, right, "turnstile_=>"), history
     else:
-        return None, -1
+        return None, None

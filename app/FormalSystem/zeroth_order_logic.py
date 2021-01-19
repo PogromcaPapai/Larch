@@ -108,11 +108,6 @@ def check_syntax(sentence: utils.Sentence) -> tp.Union[str, None]:
     #         tested=after[:]
 
 
-def check_rule_reuse(rule_name: str) -> bool:
-    """Checks whether the rule can be reused on one statement in one branch"""
-    return RULES[rule_name].reusable
-
-
 def get_rules() -> dict[str, str]:
     """Returns the names and documentation of the rules"""
     rule_dict = dict()
@@ -125,7 +120,7 @@ def get_used_types() -> tuple[str]:
     return USED_TYPES
 
 
-def use_rule(name: str, branch: list[utils.Sentence], context: dict[str,tp.Any]) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
+def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence], context: dict[str,tp.Any]) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
     """Uses a rule of the given name on the provided branch.
         Context allows to give the FormalSystem additional arguments. 
         This system only uses sentenceID
@@ -134,28 +129,36 @@ def use_rule(name: str, branch: list[utils.Sentence], context: dict[str,tp.Any])
     :type name: str
     :param branch: List of sentences in a branch
     :type branch: list[utils.Sentence]
+    :param used: Set of sentences that were already used
+    :type used: set[utils.Sentence]
     :param context: Additional arguments (here it's only sentenceID)
     :type context: dict[str,tp.Any]
     :return: Generated tuple structure with the sentences and sentence ID
     :rtype: tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]
     """
+    
     rule = RULES[name]
     statement_ID = context['sentenceID']
 
     # Sentence getting
     if statement_ID < 0 or statement_ID > len(branch):
             raise utils.FormalSystemError("No such sentence")
+
     tokenized_statement = branch[statement_ID]
 
-    if not tokenized_statement: # Used sentence filtering
+    if not rule.reusable and tuple(tokenized_statement) in used: # Used sentence filtering
         raise utils.FormalSystemError("This sentence was already used in a non-reusable rule")
 
     # Rule usage
     fin = rule.func(tokenized_statement)
     if fin:
-        return fin, statement_ID
+        if rule.reusable:
+            u = [0]
+        else:
+            u = [tuple(tokenized_statement)]
+        return fin, len(fin)*u
     else:
-        return None, -1
+        return None, None
 
 
 def get_needed_context(rule_name: str) -> tuple[utils.ContextDef]:

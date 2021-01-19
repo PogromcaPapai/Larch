@@ -266,11 +266,23 @@ class Tree(object):
         else:
             self.closed = (len(self.getbranch())-1, contradicting)
 
+    def get_used(self) -> set[Sentence]:
+        """
+        Adds the statement ID to the used statements set
+        Should only be used after non-reusable rules
+        """
+        return self.used.copy()
 
     def add_used(self, used: int) -> None:
         """
         Adds the statement ID to the used statements set
         Should only be used after non-reusable rules
         """
-        assert used not in self.used
-        self.used.add(used)
+        #               Code handling:
+        if used == -1:  # Reset Code
+            self.used.clear()
+        elif used == 0: # Pass
+            return
+        else:
+            assert tuple(used) not in self.used
+            self.used.add(tuple(used))
