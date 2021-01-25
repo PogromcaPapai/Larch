@@ -221,7 +221,14 @@ def do_prove(session: engine.Session, sentence: str) -> str:
         return "Sentence tokenized successfully \nProof initialized"
 
 
-def do_use(session, command) -> str:
+def do_auto(session: engine.Session):
+    try:
+        out = session.auto()
+    except engine.EngineError as e:
+        return str(e)
+    return "\n".join(out)
+
+def do_use(session: engine.Session, command) -> str:
     """Uses a rule in the proof
 
     Arguments:
@@ -282,9 +289,9 @@ def do_use(session, command) -> str:
 
 def do_contra(session, branch: str):
     """Detects contradictions and handles them by closing their branches"""
-    cont = session.deal_contradiction(branch, 2)
+    cont = session.deal_contradiction(branch)
     if cont:
-        return f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed."
+        return cont
     else:
         return f"No contradictions found on branch {branch}."
 
@@ -346,13 +353,14 @@ command_dict = OrderedDict({
     'use': {'comm': do_use, 'args': 'multiple_strings', 'summary': ''},
     'leave': {'comm': do_leave, 'args': [], 'summary': ''},
     'prove': {'comm': do_prove, 'args': 'multiple_strings', 'summary': ''},
+    'auto': {'comm': do_auto, 'args': [], 'summary': ''},
     # Program interaction
     'plugin switch': {'comm': do_plug_switch, 'args': [str, str], 'summary': ''},
     'plugin list all': {'comm': do_plug_list_all, 'args': [], 'summary': ''},
     'plugin list': {'comm': do_plug_list, 'args': [str], 'summary': ''},
     'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'summary': ''},
     'clear': {'comm': do_clear, 'args': [], 'summary': ''},
-    'kaja godek': {'comm': lambda x: "***** ***", 'args': [], 'summary': ''}
+    # 'kaja godek': {'comm': lambda x: "***** ***", 'args': [], 'summary': ''}
 })
 
 
@@ -389,7 +397,7 @@ def get_rprompt(session):
 
     # Adding branch closing symbol
     if closed:
-        s = f"XXX ({closed[0]+1}, {closed[1]+1})"
+        s = closed[0]
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
 

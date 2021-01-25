@@ -38,6 +38,8 @@ def is_Sublist(l, s):
 def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
     """
     Returns n-th part of the sentence (split_types is the type of separator)
+
+    Changes the sentence!!
     """
     split_count = 0
     start_split = 0
@@ -321,8 +323,28 @@ def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
         return statement
 
 
-def check_contradict(s: utils.Sentence, t: utils.Sentence) -> bool:
-    return False
+def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
+    left, right = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)[0]
+    seps = sum((i.startswith('sep_') for i in left), 1)
+
+    looping = len(right) == 1
+    for i in range(0, seps):
+        f = get_part(left[:], 'sep', i)
+
+        # F, ... => ...
+        if len(f)==1 and f[0].startswith("falsum_"):
+            return 1, f"Falsum", f"Falsum found on the left"
+
+        # p, ... => p
+        if f==right:
+            return 1, f"Ax", f"Sequent on the right corresponds with a sequent on the left"
+
+        # Loop detection    
+        looping &= (tuple(f) in used) or len(f)==1
+        
+
+    if looping:
+        return 8, f"...", f"Nothing new can be derived from the branch, so it was closed."
 
 
 def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
@@ -370,6 +392,10 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
 
     start = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)
     start_left, start_right = start[0]
+    
+    # Check sequent number
+    if context.get('partID', -1) > sum(i.startswith('sep') for i in start_left)+1:
+        raise utils.FormalSystemError("Sequent number is too big")
 
     # Loop detection
     history = None

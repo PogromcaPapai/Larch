@@ -114,7 +114,7 @@ class Tree(object):
         else:
             children = None
             if self.closed:
-                closer = f"XXX ({self.closed[0]+1}, {self.closed[1]+1})"
+                closer = self.closed[0]
             else:
                 closer = ''
         return PrintedTree(sentences=self.statements, children=children, closer=closer)
@@ -253,18 +253,14 @@ class Tree(object):
                 f'Trying to append {len(statements)} branches to the tree')
 
 
-    def close(self, contradicting: int, contradicting2: int = None) -> None:
+    def close(self, info: str, code: int = 1) -> None:
         """Closes the branch using the last
 
-        :param contradicting: ID of the colliding sentence
-        :type contradicting: int
-        :param contradicting2: Use if you already have ID of the second colliding sentence
-        :type contradicting2: int, optional
+        Code list:
+        1 - Classic closure
+        8 - Loop prevention (get it? the loop?)
         """
-        if contradicting2:
-            self.closed = (contradicting2, contradicting)
-        else:
-            self.closed = (len(self.getbranch())-1, contradicting)
+        self.closed = (code, info)
 
     def get_used(self) -> set[Sentence]:
         """
@@ -273,16 +269,18 @@ class Tree(object):
         """
         return self.used.copy()
 
-    def add_used(self, used: int) -> None:
+    def add_used(self, *used_l: tuple[tp.Union[int, tuple[str]]]) -> None:
         """
         Adds the statement ID to the used statements set
         Should only be used after non-reusable rules
         """
-        #               Code handling:
-        if used == -1:  # Reset Code
-            self.used.clear()
-        elif used == 0: # Pass
-            return
-        else:
-            assert tuple(used) not in self.used
-            self.used.add(tuple(used))
+        for used in used_l:
+            assert not isinstance(used, str)
+            #               Code handling:
+            if used == -1:  # Reset set
+                self.used.clear()
+            elif used == 0: # Pass
+                return
+            else:
+                assert tuple(used) not in self.used
+                self.used.add(tuple(used))

@@ -72,7 +72,7 @@ class Session(object):
     All exceptions are EngineErrors and can be shown to the user
     """
     ENGINE_VERSION = '0.0.1'
-    SOCKETS = ('FormalSystem', 'Lexicon', 'Output')
+    SOCKETS = ('FormalSystem', 'Lexicon', 'Output', 'Auto')
 
     def __init__(self, session_ID: str, config_file: str):
         """Initializes an empty Session which reads from the config file
@@ -102,7 +102,7 @@ class Session(object):
     # Plugin manpiulation
 
 
-    def access(self, socket: str) -> Module:
+    def acc(self, socket: str) -> Module:
         """Returns the module plugges into a socket of the given name"""
         if (sock := self.sockets.get(socket, None)) is None:
             raise EngineError(f"There is no socket named {socket}")
@@ -202,16 +202,16 @@ class Session(object):
         :raises ValueError: Wrong statement syntax
         """
         try:
-            tokenized = self.access('Lexicon').tokenize(
-                statement, self.access('FormalSystem').get_used_types(), self.defined)
-        except self.access('Lexicon').utils.CompilerError as e:
+            tokenized = self.acc('Lexicon').tokenize(
+                statement, self.acc('FormalSystem').get_used_types(), self.defined)
+        except self.acc('Lexicon').utils.CompilerError as e:
             raise EngineError(str(e))
-        problem = None#self.access('FormalSystem').check_syntax(tokenized)
+        problem = None#self.acc('FormalSystem').check_syntax(tokenized)
         if problem:
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise EngineError(f"Syntax error: {problem}")
         else:
-            tokenized = self.access('FormalSystem').prepare_for_proving(tokenized)
+            tokenized = self.acc('FormalSystem').prepare_for_proving(tokenized)
             self.proof = Tree(tokenized, branch_name='Linen')
             self.branch = 'Linen'
 
@@ -224,16 +224,16 @@ class Session(object):
 
     @EngineLog
     @DealWithPOP
-    def deal_contradiction(self, branch_name: str, amount: int) -> tp.Union[None, tuple[int]]:
+    def deal_contradiction(self, branch_name: str) -> tp.Union[None, tuple[int]]:
         """Checks whether a sentence contradicting with the newest one exists"""
         # Tests
-        assert amount>0
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
 
         try:
-            branch, closed = self.proof.getleaves(branch_name)[0].getbranch()
+            branch, _ = self.proof.getleaves(branch_name)[0].getbranch()
+            used = self.proof.getleaves(branch_name)[0].get_used()
         except ValueError as e:
             if e.message == 'not enough values to unpack (expected 2, got 1)':
                 raise EngineError(
@@ -242,28 +242,28 @@ class Session(object):
                 raise e
         
         # Branch checking
-        tested = branch[-amount:]
-        for num, sent in enumerate(branch[:-1]):
-            for i, t in enumerate(tested):
-                if self.access('FormalSystem').check_contradict(sent, t):
-                    EngineError(
-                        f"Found a contradiction at ({num}, {len(branch)-amount+i+1})")
-                    self.proof.getleaves(branch_name)[0].close(
-                        num, len(branch)-amount+i)
-                    return num, len(branch)-amount+i
-        return None
+        out = self.acc('FormalSystem').check_contradict(branch, used)
+        if out:
+            code, printed, info = out
+            EngineLog(
+                f"Closing {branch_name}: {code=}, {info=}")
+            self.proof.getleaves(branch_name)[0].close(code, printed)
+            return info
+        else:
+            return None
 
    
     def context_info(self, rule: str):
         """Returns context info for a rule"""
-        return self.access('FormalSystem').get_needed_context(rule)
+        return self.acc('FormalSystem').get_needed_context(rule)
+
 
     @EngineLog
     @DealWithPOP
     def use_rule(self, rule: str, context: dict[str, tp.Any]) -> tp.Union[None, tuple[str]]:
         """Uses a rule of the given name on the current branch of the proof.
         Context allows to give the FormalSystem additional arguments 
-        Use `self.access('FormalSystem').get_needed_context(rule)` to check for needed context
+        Use `self.acc('FormalSystem').get_needed_context(rule)` to check for needed context
 
         :param rule: Rule name (from `FormalSystem` plugin)
         :type rule: str
@@ -276,11 +276,11 @@ class Session(object):
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
-        if not rule in self.access('FormalSystem').get_rules().keys():
+        if not rule in self.acc('FormalSystem').get_rules().keys():
             raise EngineError("No such rule")
         
         # Context checking
-        context_info = self.access('FormalSystem').get_needed_context(rule)
+        context_info = self.acc('FormalSystem').get_needed_context(rule)
         if {i.variable for i in context_info} != set(context.keys()):
             raise EngineError("Wrong context")
 
@@ -290,8 +290,8 @@ class Session(object):
     
         # Rule execution
         try:
-            out, used_extention = self.access('FormalSystem').use_rule(rule, branch, used, context)
-        except self.access('FormalSystem').utils.FormalSystemError as e:
+            out, used_extention = self.acc('FormalSystem').use_rule(rule, branch, used, context)
+        except self.acc('FormalSystem').utils.FormalSystemError as e:
             raise EngineError(str(e))
 
         # Adding to used rules and returning
@@ -312,6 +312,28 @@ class Session(object):
             return None
 
 
+    @DealWithPOP
+    def auto(self) -> tuple[str]:
+        # Tests
+        if not self.proof:
+            raise EngineError("There is no proof started")
+        if self.sockets['FormalSystem'].get_plugin_name() not in self.acc('Auto').compatible():
+            raise EngineError(f"Plugin {self.sockets['Auto'].get_plugin_name()} doesn't support proving in {self.sockets['FormalSystem'].get_plugin_name()}")
+
+        out = []
+        while len(leaves := self.proof.getopen())>0:
+            out.append(f"Jumping to {leaves[0].name} branch")
+            self.jump(leaves[0].name)
+
+            info = self.acc('Auto').solve(self.use_rule)
+            if info:
+                out += info
+            self.deal_contradiction(self.branch, )
+
+
+
+
+
     # Proof navigation
 
 
@@ -325,7 +347,7 @@ class Session(object):
                 f"Branch '{self.branch}' doesn't exist in this proof")
         except AttributeError:
             raise EngineError("There is no proof started")
-        reader = lambda x: self.access('Output').get_readable(x, self.access('Lexicon').get_lexem)
+        reader = lambda x: self.acc('Output').get_readable(x, self.acc('Lexicon').get_lexem)
         return [reader(i) for i in branch], closed
 
 
@@ -341,7 +363,7 @@ class Session(object):
     @DealWithPOP
     def getrules(self):
         """Returns all rule names"""
-        return self.access('FormalSystem').get_rules()
+        return self.acc('FormalSystem').get_rules()
 
 
     @DealWithPOP
@@ -352,7 +374,7 @@ class Session(object):
                 "There is no proof started")
         
         printed = self.proof.gettree()
-        return self.access('Output').write_tree(printed, self.access('Lexicon').get_lexem)
+        return self.acc('Output').write_tree(printed, self.acc('Lexicon').get_lexem)
 
 
     def next(self) -> None:
@@ -386,6 +408,8 @@ class Session(object):
         """
         if not self.proof:
             raise EngineError("There is no proof started")
+        if new.capitalize()==self.branch:
+            return
 
         new = new.upper()
         if new in ('LEFT', 'RIGHT'):

@@ -81,15 +81,22 @@ def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     return statement
 
 
-def check_contradict(statement_1: utils.Sentence, statement_2: utils.Sentence) -> bool:
-    """Checks whether statements collide with eachother"""
-    if statement_1[0].startswith('not') and not statement_2[0].startswith('not'):
-        negated, statement = statement_1, statement_2
-    elif statement_2[0].startswith('not') and not statement_1[0].startswith('not'):
-        negated, statement = statement_2, statement_1
-    else:
-        return False
-    return utils.reduce_brackets(negated[1:]) == statement
+def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
+    """Checks for closing sentences"""
+    for num1, statement_1 in enumerate(branch[:-1]):
+        for num2, statement_2 in enumerate(branch[-2:]):
+            if statement_1[0].startswith('not') and not statement_2[0].startswith('not'):
+                negated, statement = statement_1, statement_2
+            elif statement_2[0].startswith('not') and not statement_1[0].startswith('not'):
+                negated, statement = statement_2, statement_1
+            else:
+                continue
+
+            if utils.reduce_brackets(negated[1:]) == statement:
+                return 1, f"XXX ({num1+1}, {num2+1})", f"Sentences {num1+1} and {num2+1} contradict. The branch was closed."
+    return None
+                
+        
 
 
 def check_syntax(sentence: utils.Sentence) -> tp.Union[str, None]:

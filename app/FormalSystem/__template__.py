@@ -8,7 +8,7 @@ VERSION = '0.0.1'
 def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     pass
 
-def check_contradict(s: utils.Sentence, t: utils.Sentence) -> bool:
+def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
     pass
 
 def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
