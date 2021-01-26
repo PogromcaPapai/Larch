@@ -285,8 +285,8 @@ class Session(object):
             raise EngineError("Wrong context")
 
         # Statement and used retrieving
-        branch = self.proof.leaves[self.branch].getbranch()[0][:]
-        used = self.proof.leaves[self.branch].get_used()
+        branch = self._get_node().getbranch()[0][:]
+        used = self._get_node().get_used()
     
         # Rule execution
         try:
@@ -296,13 +296,13 @@ class Session(object):
 
         # Adding to used rules and returning
         if out is not None:
-            old = self.proof.leaves[self.branch]
-            self.proof.leaves[self.branch].append(out)
+            old = self._get_node()
+            self._get_node().append(out)
             children = old.getchildren()
             
             if not children:
                 assert len(used_extention)==1, "Wrong used_extention length"
-                self.proof.leaves[self.branch].add_used(used_extention[0])
+                self._get_node().add_used(used_extention[0])
                 return (old.name,)
             else:
                 for j, statement_ID in zip(children, used_extention):
@@ -321,17 +321,17 @@ class Session(object):
             raise EngineError(f"Plugin {self.sockets['Auto'].get_plugin_name()} doesn't support proving in {self.sockets['FormalSystem'].get_plugin_name()}")
 
         out = []
-        while len(leaves := self.proof.getopen())>0:
+        while len(leaves := list(self.proof.getopen()))>0:
             out.append(f"Jumping to {leaves[0].name} branch")
             self.jump(leaves[0].name)
 
-            info = self.acc('Auto').solve(self.use_rule)
+            info = self.acc('Auto').solve(self.use_rule, self._get_node().getbranch()[0])
+            return info
             if info:
-                out += info
-            self.deal_contradiction(self.branch, )
-
-
-
+                out.append(info)
+            else:
+                return None
+            # out += self.deal_contradiction()
 
 
     # Proof navigation
@@ -341,7 +341,7 @@ class Session(object):
     def getbranch(self) -> list[list[str], tp.Union[tuple[int, int], None]]:
         """Returns the active branch and ID of contradicting sentences if the branch is closed"""
         try:
-            branch, closed = self.proof.leaves[self.branch].getbranch()
+            branch, closed = self._get_node().getbranch()
         except KeyError:
             raise EngineError(
                 f"Branch '{self.branch}' doesn't exist in this proof")
@@ -413,7 +413,7 @@ class Session(object):
 
         new = new.upper()
         if new in ('LEFT', 'RIGHT'):
-            changed = self.proof.leaves[self.branch].getbranch_neighbour(new)
+            changed = self._get_node().getbranch_neighbour(new)
             if changed is None:
                 raise EngineError(f"There is no branch on the {new.lower()}")
             else:
@@ -430,5 +430,8 @@ class Session(object):
 
     def get_socket_names(self):
         return self.SOCKETS
+
+    def _get_node(self):
+        return self.proof.leaves[self.branch]
 
 # Misc

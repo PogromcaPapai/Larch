@@ -14,26 +14,19 @@ PRECEDENCE = {
     'turnstile': 1
 }
 
-def is_Sublist(l, s):
-	sub_set = False
-	if s == []:
-		sub_set = True
-	elif s == l:
-		sub_set = True
-	elif len(s) > len(l):
-		sub_set = False
 
-	else:
-		for i in range(len(l)):
-			if l[i] == s[0]:
-				n = 1
-				while (n < len(s)) and (l[i+n] == s[n]):
-					n += 1
-				
-				if n == len(s):
-					sub_set = True
+def is_sequent(l, s) -> bool:
+    buffor = []
+    for i in l:
+        if i.startswith('sep_'):
+            if buffor == s:
+                return True
+            else:
+                buffor == []
+        else:
+            buffor.append(i)
+    return False
 
-	return sub_set
 
 def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
     """
@@ -406,7 +399,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
             history = [start_right, 0]
     elif name == 'left or':
         history = [-1, -1]
-    elif name == 'right imp' and not is_Sublist(start_left, start_right):
+    elif name == 'right imp' and not is_sequent(start_left, start_right):
         history = [-1]
 
     # Rule usage
