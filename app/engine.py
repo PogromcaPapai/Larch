@@ -224,12 +224,11 @@ class Session(object):
 
     @EngineLog
     @DealWithPOP
-    def deal_contradiction(self, branch_name: str) -> tp.Union[None, tuple[int]]:
+    def deal_contradiction(self, branch_name: str) -> tp.Union[None, str]:
         """Checks whether a sentence contradicting with the newest one exists"""
         # Tests
         if not self.proof:
-            raise EngineError(
-                "There is no proof started")
+            raise EngineError("There is no proof started")
 
         try:
             branch, _ = self.proof.getleaves(branch_name)[0].getbranch()
@@ -248,7 +247,7 @@ class Session(object):
             EngineLog(
                 f"Closing {branch_name}: {code=}, {info=}")
             self.proof.getleaves(branch_name)[0].close(printed, code)
-            return info
+            return f"{branch_name}: {info}"
         else:
             return None
 
@@ -343,10 +342,15 @@ class Session(object):
                 out.append("Couldn't perform any actions")
                 continue
             
-
-            if self.proof_finished():
-                out.append("Every branch is closed; Remember to check whether")
+            ended, closed = self.proof_finished()
+            if closed:
+                out.append("Proof was succesfully finished")
                 break
+            elif ended:
+                out.append("All branches are closed")
+                break
+            else:
+                out.append("")
 
         return out
 
@@ -410,11 +414,11 @@ class Session(object):
         raise EngineError("All branches are closed")
 
     
-    def proof_finished(self):
+    def proof_finished(self) -> tuple[bool, bool]:
         """Checks if proof is finished"""
         if not self.proof:
             raise EngineError("There is no proof started")
-        return self.proof.is_finished()
+        return self.proof.is_finished(), self.proof.is_closed()
 
 
     def jump(self, new: str) -> None:

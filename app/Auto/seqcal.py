@@ -73,7 +73,7 @@ def solve(delegate: callable, branch: list[utils.Sentence]) -> tuple[tp.Union[st
         if rule[0]=='left':
             context['partID'] = rule[2]
         elif rule[1]=='or':
-            context['conn_side'] = 'l' # Tymczasowe rozwiązanie
+            context['conn_side'] = 'find'
 
         # Execution
         try:

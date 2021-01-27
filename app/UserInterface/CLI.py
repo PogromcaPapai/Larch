@@ -281,8 +281,12 @@ def do_use(session: engine.Session, command) -> str:
         # Contradiction handling
         for i in val:
             out.append(do_contra(session, i))
-        if session.proof_finished():
-            out.append("Every branch is closed")
+        
+        ended, closed = session.proof_finished()
+        if closed:
+            out.append("Proof was succesfully finished")
+        elif ended:
+            out.append("All branches are closed")
 
     else:
         out.append("Rule couldn't be used")

@@ -208,9 +208,13 @@ class Tree(object):
             return self.parent.getchildren(index)
 
 
-    def is_finished(self):
+    def is_finished(self) -> bool:
         """Checks if all branches are closed"""
         return all((i.closed for i in self.leaves.values()))
+
+    def is_closed(self) -> bool:
+        """Checks if all branches are closed"""
+        return all((i.closed is not None and i.closed[0] == 1 for i in self.leaves.values()))
 
 
     # Tree modification

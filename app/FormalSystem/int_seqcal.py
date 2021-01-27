@@ -146,19 +146,28 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str):
         ______________
         ... => AvB
     """
-    if (side := {'l':0,'r':1}.get(side, None)) is None:
-        return (None, None)
-
-    try:
-        conj = get_part(right, 'sep', 0)
-    except IndexError:
+    if not right or side not in ('l', 'r','find'):
         return (None, None)
     
-    split = utils.strip_around(conj, 'or', False, PRECEDENCE)
+    subsent = get_part(right, 'sep', 0)
+    split = utils.strip_around(subsent, 'or', False, PRECEDENCE)
     if split is None or split[0] is None:
         return (None, None)
-    split = split[0]
-    return ((left,),), ((split[side],),)
+    left_split, right_split = split[0]
+    
+    if side=='l':
+        return ((left,),), ((left_split,),)
+    elif side=='r':
+        return ((left,),), ((right_split,),)
+    else:
+        if is_sequent(left, left_split):
+            return ((left,),), ((left_split,),)
+        elif is_sequent(left, right_split):
+            return ((left,),), ((right_split,),)
+        else:
+            # Default case
+            return ((left,),), ((max(split[0], key=len),),)
+
 
 
 def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num: int):
@@ -259,7 +268,7 @@ RULES = {
         utils.ContextDef(
             variable='conn_side',
             official='Side of the or operation',
-            docs='l/r',
+            docs='l/r/find; `find` option searches for the best possible fit',
             type_=str
         )]
     ),
@@ -322,8 +331,12 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
     left, right = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)[0]
     seps = sum((i.startswith('sep_') for i in left), 1)
 
-    # looping = tuple(right) in used
+    # Right part verification
     empty = len(right)==1
+
+    # Left part verification
+    if len(left)==0:
+        return None
     for i in range(0, seps):
         f = get_part(left[:], 'sep', i)
 
@@ -335,27 +348,9 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
         if f==right:
             return 1, f"Ax", f"Sequent on the right corresponds with a sequent on the left"
 
-        # # Loop detection
-        # if 'imp' in f:
-        #     bracket = 0
-        #     s = False
-        #     for i in f:
-        #         if i == "(":
-        #             bracket += 1
-        #         elif i == ")":
-        #             bracket -= 1
-        #         elif bracket==0 and i.startswith('imp_'):
-        #             s = True
-        #             break
-        #     looping &= s
-        # else:
-        #     looping &= not any((any((j.startswith(i) for j in f)) for i in ('and_', 'or_')))   
-
         # Detect finish
         empty &= not any((any((j.startswith(i) for j in f)) for i in ('and_', 'or_', 'imp_')))
 
-    # if looping:
-    #     return 8, "...", "The branch will only loop, so it was closed."
     if empty:
         return 0, "", "Nothing more can be done with this branch, so it was closed."
 
