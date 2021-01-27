@@ -247,7 +247,7 @@ class Session(object):
             code, printed, info = out
             EngineLog(
                 f"Closing {branch_name}: {code=}, {info=}")
-            self.proof.getleaves(branch_name)[0].close(code, printed)
+            self.proof.getleaves(branch_name)[0].close(printed, code)
             return info
         else:
             return None
@@ -320,18 +320,35 @@ class Session(object):
         if self.sockets['FormalSystem'].get_plugin_name() not in self.acc('Auto').compatible():
             raise EngineError(f"Plugin {self.sockets['Auto'].get_plugin_name()} doesn't support proving in {self.sockets['FormalSystem'].get_plugin_name()}")
 
+        black = set()
         out = []
-        while len(leaves := list(self.proof.getopen()))>0:
-            out.append(f"Jumping to {leaves[0].name} branch")
-            self.jump(leaves[0].name)
+        while len(leaves := [i.name for i in self.proof.getopen() if not i.name in black])>0:
+            
+            out.append(f"Jumping to {leaves[0]} branch")
+            self.jump(leaves[0])
 
-            info = self.acc('Auto').solve(self.use_rule, self._get_node().getbranch()[0])
-            return info
+            info, branches = self.acc('Auto').solve(self.use_rule, self._get_node().getbranch()[0])
             if info:
                 out.append(info)
+                if info=="Branch always loops":
+                    self.proof.getleaves(leaves[0])[0].close("...", 8)
+                    black.add(leaves[0])
+                    continue
+                for branch in branches:
+                    o = self.deal_contradiction(branch)
+                    if o:
+                        out.append(o)
             else:
-                return None
-            # out += self.deal_contradiction()
+                black.add(leaves[0])
+                out.append("Couldn't perform any actions")
+                continue
+            
+
+            if self.proof_finished():
+                out.append("Every branch is closed; Remember to check whether")
+                break
+
+        return out
 
 
     # Proof navigation

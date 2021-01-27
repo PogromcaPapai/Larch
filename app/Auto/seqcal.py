@@ -16,19 +16,19 @@ PRECEDENCE = {
     'imp': 1
 }
 
-def find_rule(sen: utils.Sentence) -> tp.Union[str, None]:
+def find_rule(sen: utils.Sentence) -> tp.Union[list[str], None]:
     side = 'left'
-    top = ("", "")
+    usable = []
     bracket_lvl = 0
     lowest_precedence = inf
     sep_count = 0
     for i in sen:
         if i.startswith('sep_'):
-            highest_precedence = 0
+            lowest_precedence = inf
             sep_count += 1
             assert bracket_lvl == 0, "Wrong brackets"
         elif i.startswith('turnstile_'):
-            highest_precedence = 0
+            lowest_precedence = inf
             side = 'right'
             assert bracket_lvl == 0, "Wrong brackets"
         elif i == '(':
@@ -38,24 +38,59 @@ def find_rule(sen: utils.Sentence) -> tp.Union[str, None]:
         elif bracket_lvl == 0:
             for j in RULES_types:
                 if i.startswith(j+"_") and PRECEDENCE[j]<=lowest_precedence:
-                    if RULES.index(" ".join((top[0], top[1])))>RULES.index(" ".join((side, j))):
-                        if side=='left':
-                            top = (side, j, str(sep_count))
-                        else:
-                            top = (side, j)
+                    lowest_precedence = PRECEDENCE[j]
+                    if side=='left':
+                        usable.append((side, j, sep_count+1))
+                    else:
+                        usable.append((side, j))
     
-    if top == ("", ""):
+    if usable == []:
         return None
     else:
-        return " ".join(top)
+        return usable
 
 
 
 # __template__.py
 
-def solve(delegate: callable, branch: list[utils.Sentence]) -> tp.Union[str, None]:
-    test = find_rule(branch[-1])
-    return test
+def solve(delegate: callable, branch: list[utils.Sentence]) -> tuple[tp.Union[str, None], tp.Union[tuple[str], None]]:
+    found_rules = find_rule(branch[-1])
+    
+    if found_rules is None:
+        return None, None
+
+    found_rules.sort(key=lambda x: RULES.index(" ".join(x[:2])))
+    
+    out = None
+    i = 0
+    loops = 0
+    while not out and len(found_rules)>i:
+        rule = found_rules[i]
+        i+=1
+
+        # Context compilation
+        context = dict()
+        if rule[0]=='left':
+            context['partID'] = rule[2]
+        elif rule[1]=='or':
+            context['conn_side'] = 'l' # Tymczasowe rozwiązanie
+
+        # Execution
+        try:
+            out = delegate(" ".join(rule[:2]), context)
+        except Exception as e:
+            if str(e) == "Operation prohibited by loop detection algorithm":
+                loops += 1
+                out = None
+            else:
+                raise e
+
+    if out:
+        return f"Performed {' '.join((str(i) for i in rule))}", out
+    else:
+        if loops==len(found_rules):
+            return "Branch always loops", None
+        return None, None
 
 
 def compatible() -> tuple[str]:

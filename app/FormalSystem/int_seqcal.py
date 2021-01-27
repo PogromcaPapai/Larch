@@ -22,9 +22,11 @@ def is_sequent(l, s) -> bool:
             if buffor == s:
                 return True
             else:
-                buffor == []
+                buffor = []
         else:
             buffor.append(i)
+    if buffor == s:
+        return True
     return False
 
 
@@ -320,7 +322,8 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
     left, right = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)[0]
     seps = sum((i.startswith('sep_') for i in left), 1)
 
-    looping = len(right) == 1
+    # looping = tuple(right) in used
+    empty = len(right)==1
     for i in range(0, seps):
         f = get_part(left[:], 'sep', i)
 
@@ -332,12 +335,29 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
         if f==right:
             return 1, f"Ax", f"Sequent on the right corresponds with a sequent on the left"
 
-        # Loop detection    
-        looping &= (tuple(f) in used) or len(f)==1
-        
+        # # Loop detection
+        # if 'imp' in f:
+        #     bracket = 0
+        #     s = False
+        #     for i in f:
+        #         if i == "(":
+        #             bracket += 1
+        #         elif i == ")":
+        #             bracket -= 1
+        #         elif bracket==0 and i.startswith('imp_'):
+        #             s = True
+        #             break
+        #     looping &= s
+        # else:
+        #     looping &= not any((any((j.startswith(i) for j in f)) for i in ('and_', 'or_')))   
 
-    if looping:
-        return 8, f"...", f"Nothing new can be derived from the branch, so it was closed."
+        # Detect finish
+        empty &= not any((any((j.startswith(i) for j in f)) for i in ('and_', 'or_', 'imp_')))
+
+    # if looping:
+    #     return 8, "...", "The branch will only loop, so it was closed."
+    if empty:
+        return 0, "", "Nothing more can be done with this branch, so it was closed."
 
 
 def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
@@ -397,13 +417,20 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
             raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
         else:
             history = [start_right, 0]
-    elif name == 'left or':
-        history = [-1, -1]
-    elif name == 'right imp' and not is_sequent(start_left, start_right):
-        history = [-1]
 
     # Rule usage
-    left, right = rule.func(start_left, start_right, *context.values())
+    left, right = rule.func(start_left[:], start_right[:], *context.values())
+
+    # Loop detection
+    if not (left is None or right is None):
+        if name == 'left or':
+            history = [-1, -1]
+        elif name == 'right imp':
+            l = utils.strip_around(start_right, "imp", False, PRECEDENCE)[0][0]
+            if is_sequent(start_left, l):
+                history = [0]
+            else:
+                history = [-1]
 
     # Outcome return
     if not (left is None or right is None):

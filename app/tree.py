@@ -257,9 +257,11 @@ class Tree(object):
         """Closes the branch using the last
 
         Code list:
+        0 - Empty (nothing more can be done)
         1 - Classic closure
         8 - Loop prevention (get it? the loop?)
         """
+        assert isinstance(info, str) and isinstance(code, int)
         self.closed = (code, info)
 
     def get_used(self) -> set[Sentence]:

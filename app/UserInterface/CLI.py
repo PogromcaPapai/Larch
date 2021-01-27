@@ -226,7 +226,10 @@ def do_auto(session: engine.Session):
         out = session.auto()
     except engine.EngineError as e:
         return str(e)
-    return "\n".join(out)
+    if out:
+        return "\n".join(out)
+    else:
+        return "Nothing more can be done"
 
 def do_use(session: engine.Session, command) -> str:
     """Uses a rule in the proof
@@ -397,7 +400,7 @@ def get_rprompt(session):
 
     # Adding branch closing symbol
     if closed:
-        s = closed[0]
+        s = closed[1]
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
 
