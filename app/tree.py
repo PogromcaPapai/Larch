@@ -15,7 +15,6 @@ PrintedTree = namedtuple('PrintedTree', ('sentences', 'children', 'closer'))
 
 class TreeError(Exception):
     def __init__(self, msg: str, *args, **kwargs):
-        logger.error(msg)
         super().__init__(msg, *args, **kwargs)
 
 
@@ -73,7 +72,10 @@ class Tree(object):
 
     def gen_name(self, am=2) -> tuple[str]:
         """Generates two possible names for the children of this node"""
-        return self.name, *random.choices([i for i in colors if not i in self.leaves.keys()], k=am-1) 
+        possible = [i for i in colors if not i in self.leaves.keys()]
+        if len(possible)<am-1:
+            raise TreeError("No names exist")
+        return self.name, *random.choices(possible, k=am-1) 
 
 
     # Tree reading
@@ -275,7 +277,7 @@ class Tree(object):
         """
         return self.used.copy()
 
-    def add_used(self, *used_l: tuple[tp.Union[int, tuple[str]]]) -> None:
+    def add_used(self, used_l: tuple[tp.Union[int, tuple[str]]]) -> None:
         """
         Adds the statement ID to the used statements set
         Should only be used after non-reusable rules
@@ -288,5 +290,4 @@ class Tree(object):
             elif used == 0: # Pass
                 return
             else:
-                assert tuple(used) not in self.used
                 self.used.add(tuple(used))

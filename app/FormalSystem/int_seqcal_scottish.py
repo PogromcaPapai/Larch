@@ -141,7 +141,7 @@ def rule_left_or(left: utils.Sentence, right: utils.Sentence, num: int):
     return ((split[0]+sep(left)+left,),(split[1]+sep(left)+left,),), ((right,),(right,),)
 
 
-def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str):
+def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, used: list[tuple[str]]):
     """ ... => (A,B)[side]
         ______________
         ... => AvB
@@ -149,25 +149,30 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str):
     if not right or side not in ('l', 'r','find'):
         return (None, None)
     
-    subsent = get_part(right, 'sep', 0)
-    split = utils.strip_around(subsent, 'or', False, PRECEDENCE)
+    split = utils.strip_around(right, 'or', False, PRECEDENCE)
     if split is None or split[0] is None:
         return (None, None)
     left_split, right_split = split[0]
     
+
     if side=='l':
-        return ((left,),), ((left_split,),)
+        ret = left_split
     elif side=='r':
-        return ((left,),), ((right_split,),)
+        ret = right_split
     else:
         if is_sequent(left, left_split):
-            return ((left,),), ((left_split,),)
+            ret = left_split
         elif is_sequent(left, right_split):
-            return ((left,),), ((right_split,),)
+            ret = right_split
         else:
             # Default case
-            return ((left,),), ((max(split[0], key=len),),)
+            ret = max(split[0], key=len)
 
+    if ret in used:
+        raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
+    else:
+        get_part(right, 'sep', 0)
+        return ((left,),), ((ret,),)
 
 
 def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num: int):
@@ -408,30 +413,53 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
     # Loop detection
     history = None
     if name == "left imp":
-        if tuple(start_right) in used:
+        p = get_part(start_left[:], 'sep', context['partID']-1)
+        l, r = utils.strip_around(p, "imp", False, PRECEDENCE)[0]
+        if tuple(l) in used:
             raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
         else:
-            history = [start_right, 0]
+            history = [[l], [0]]
+
+
+    elif name == 'left or':
+        p = get_part(start_left[:], 'sep', context['partID']-1)
+        l, r = utils.strip_around(p, "or", False, PRECEDENCE)[0]
+        if is_sequent(start_left, l) or is_sequent(start_left, r):
+            raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
+        else:
+            history = [[-1, start_right], [-1, start_right]]
+
+
+    elif name == 'right imp':
+        l, r = utils.strip_around(start_right, "imp", False, PRECEDENCE)[0]
+        if is_sequent(start_left, l):
+            if tuple(r) not in used:
+                history = [[r]]
+            else:
+                raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
+        else:
+            history = [[-1, r]]
+
+
+    elif name == 'right and':
+        l, r = utils.strip_around(start_right, "and", False, PRECEDENCE)[0]
+        if tuple(l) in used or tuple(r) in used:
+            raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
+        else:
+            history = [[l], [r]]
+
+    elif name =='right or':
+        context['used'] = used
 
     # Rule usage
     left, right = rule.func(start_left[:], start_right[:], *context.values())
 
-    # Loop detection
-    if not (left is None or right is None):
-        if name == 'left or':
-            history = [-1, -1]
-        elif name == 'right imp':
-            l = utils.strip_around(start_right, "imp", False, PRECEDENCE)[0][0]
-            if is_sequent(start_left, l):
-                history = [0]
-            else:
-                history = [-1]
 
     # Outcome return
     if not (left is None or right is None):
         # History length multiplication
         if not history:
-            history = [0]*len(left)
+            history = [[0]]*len(left)
         return merge_tupstruct(left, right, "turnstile_=>"), history
     else:
         return None, None

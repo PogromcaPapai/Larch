@@ -54,9 +54,7 @@ def parser(statement: str, _dict: dict) -> list[Command]:
     :rtype: list[Command]
     """
     comm = []
-    if ';' in statement:
-        raise ParsingError("Multiple commands not supported yet")
-    for command_raw in statement.split(';'):
+    for command_raw in statement.split('/'):
         # Function parsing
         command = command_raw.strip()
         func = None

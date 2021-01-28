@@ -124,6 +124,8 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
     :return: Tuple of generated branch additions
     :rtype: tuple[tuple[Sentence]]
     """
+    if not statement:
+        return None
     lvl = 0
     middle = None
     precedence_keys = precedence.keys()

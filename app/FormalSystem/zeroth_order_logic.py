@@ -160,9 +160,9 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
     fin = rule.func(tokenized_statement)
     if fin:
         if rule.reusable:
-            u = [0]
+            u = [[0]]
         else:
-            u = [tuple(tokenized_statement)]
+            u = [[tuple(tokenized_statement)]]
         return fin, len(fin)*u
     else:
         return None, None

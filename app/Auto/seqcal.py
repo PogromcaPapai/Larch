@@ -94,4 +94,4 @@ def solve(delegate: callable, branch: list[utils.Sentence]) -> tuple[tp.Union[st
 
 
 def compatible() -> tuple[str]:
-    return ('int_seqcal')
+    return ('int_seqcal_scottish', 'int_seqcal_swiss')

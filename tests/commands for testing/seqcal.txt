@@ -1,0 +1,16 @@
+Niedowodliwe:
+
+prove (((p -> F) and (q -> F)) -> F) -> pvq / auto
+prove ((p and (q -> F)) -> F) -> (p -> q) / auto
+prove ((p -> F) -> F) -> (p -> F) / auto
+prove ((p -> F) -> F) -> p / auto
+
+Nie działa tylko w szkockim
+prove (((p -> q) -> F) -> F) -> ((q -> F) -> (p -> F)) / auto
+
+Dowodliwe:
+
+prove (p and (p -> F)) -> q / auto
+prove (((p -> F) -> F) -> F) -> (p -> F) / auto
+prove p -> ((p -> F) -> F) / auto
+prove ((p -> (q -> p)) -> F) -> F / auto

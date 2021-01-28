@@ -304,8 +304,8 @@ class Session(object):
                 self._get_node().add_used(used_extention[0])
                 return (old.name,)
             else:
-                for j, statement_ID in zip(children, used_extention):
-                    j.add_used(statement_ID)
+                for j, s in zip(children, used_extention):
+                    j.add_used(s)
                 return tuple([i.name for i in children])
         else:
             return None
