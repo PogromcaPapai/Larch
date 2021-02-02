@@ -5,7 +5,7 @@ SOCKET = 'Lexicon'
 VERSION = '0.0.1'
 
 
-def tokenize(word: str, used_lexems: tp.Iterable[str], defined: dict[str, str] = dict()) -> utils.Sentence:
+def tokenize(statement: str, used_tokens: tp.Iterable[str], defined: dict[str, str] = dict()) -> utils.Sentence:
     pass
 
 
