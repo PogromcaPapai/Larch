@@ -415,8 +415,10 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
     elif name == 'left or':
         history = [[-1], [-1]]
     elif name == 'right imp':
-        l = utils.strip_around(start_right, "imp", False, PRECEDENCE)[0][0]
-        if is_sequent(start_left, l):
+        l = utils.strip_around(start_right, "imp", False, PRECEDENCE)
+        if l is None:
+            return None, None
+        elif is_sequent(start_left, l[0][0]):
             history = [[0]]
         else:
             history = [[-1]]
