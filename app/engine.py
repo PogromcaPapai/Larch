@@ -259,7 +259,7 @@ class Session(object):
 
     @EngineLog
     @DealWithPOP
-    def use_rule(self, rule: str, context: dict[str, tp.Any]) -> tp.Union[None, tuple[str]]:
+    def use_rule(self, rule: str, context: dict[str, tp.Any], auto: bool = False) -> tp.Union[None, tuple[str]]:
         """Uses a rule of the given name on the current branch of the proof.
         Context allows to give the FormalSystem additional arguments 
         Use `self.acc('FormalSystem').get_needed_context(rule)` to check for needed context
@@ -289,7 +289,7 @@ class Session(object):
     
         # Rule execution
         try:
-            out, used_extention = self.acc('FormalSystem').use_rule(rule, branch, used, context)
+            out, used_extention = self.acc('FormalSystem').use_rule(rule, branch, used, context, auto)
         except self.acc('FormalSystem').utils.FormalSystemError as e:
             raise EngineError(str(e))
 

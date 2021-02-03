@@ -89,9 +89,66 @@ def sep(part: utils.Sentence = None) -> list[str]:
         return []
 
 
+def stoup_find(s: utils.Sentence) -> tp.Union[int, None]:
+    count = 0
+    for seq in s:
+        if seq.startswith(f"sep_"):
+            count += 1
+        elif seq == "^":
+            return count
+
+
+def stoup_add(tree: tuple[tuple[utils.Sentence]], rule_name: str, new: bool = False) -> tuple[tuple[utils.Sentence]]:
+    if rule_name.endswith('left_imp'):
+        return (tree[0], (['^']+tree[1][0],))
+    elif rule_name.endswith('left_or'):
+        return tree
+    elif rule_name.endswith('left_and'):
+        if new:
+            return tree
+        else:
+            ntree = ["^"]+tree[0][0]
+            for i, seq in enumerate(ntree[0][0]):
+                if seq.startswith("sep_"):
+                    break
+            ntree.insert(i+1, "^")
+            return ((ntree,),)
+        
+
+
+def stoupManager(func):
+    def wrapped(auto: bool, left, right, num, *args):
+        if not auto:
+            return func(left, right, num, *args)
+        if (priority := stoup_find(left)) is not None:
+            if priority == num:
+                res_left, res_right = func([i for i in left if i != "^"], right, num, *args)
+                if res_left is not None:
+                    return stoup_add(res_left, func.__name__), res_right
+            else:
+                raise utils.FormalSystemError("There is a sequent that is prioritized")
+        else:
+            res_left, res_right = func([i for i in left if i != "^"], right, num, *args)
+            if res_left is not None:
+                return stoup_add(res_left, func.__name__, True), res_right
+    return wrapped
+
+
+def stoupBlock(func):
+    def wrapped(auto: bool, left, *args):
+        if not auto:
+            return func(left, *args)
+        if stoup_find(left) is not None:
+            raise utils.FormalSystemError("Rule can't be performed on prioritized sequents")
+        else:
+            return func(left, *args)
+    return wrapped
+
+
 # Rule definition
 
 
+@stoupManager
 def rule_left_and(left: utils.Sentence, right: utils.Sentence, num: int):
     """ A,B,... => ...
         ______________
@@ -109,6 +166,7 @@ def rule_left_and(left: utils.Sentence, right: utils.Sentence, num: int):
     return ((split[0]+sep()+split[1]+sep(left)+left,),), ((right,),)
 
 
+@stoupBlock
 def rule_right_and(left: utils.Sentence, right: utils.Sentence):
     """ ... => A      ... => B
         __________________________
@@ -124,6 +182,8 @@ def rule_right_and(left: utils.Sentence, right: utils.Sentence):
     split = split[0]
     return ((left,),(left,),), ((split[0],),(split[1],),)
 
+
+@stoupManager
 def rule_left_or(left: utils.Sentence, right: utils.Sentence, num: int):
     """ A,... => ...  B,... => ...
         __________________________
@@ -141,6 +201,7 @@ def rule_left_or(left: utils.Sentence, right: utils.Sentence, num: int):
     return ((split[0]+sep(left)+left,),(split[1]+sep(left)+left,),), ((right,),(right,),)
 
 
+@stoupBlock
 def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, used: list[tuple[str]]):
     """ ... => (A,B)[side]
         ______________
@@ -175,6 +236,7 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, used: 
         return ((left,),), ((ret,),)
 
 
+@stoupManager
 def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num: int):
     """ A -> B, ... => A    B,... => ...
         ________________________________
@@ -192,6 +254,7 @@ def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num: int):
     return ((conj+sep(left)+left,),(split[1]+sep(left)+left,),), ((split[0],),(right,),)
 
 
+@stoupBlock
 def rule_right_imp(left: utils.Sentence, right: utils.Sentence):
     """ ..., A => B
         ______________
@@ -208,6 +271,8 @@ def rule_right_imp(left: utils.Sentence, right: utils.Sentence):
     split = split[0]
     return ((split[0]+sep(left)+left,),), ((split[1],),)
 
+
+@stoupBlock
 def rule_left_strong(left: utils.Sentence, right: utils.Sentence, num: int):
     """ ..., A, A => ...
         ________________
@@ -220,6 +285,8 @@ def rule_left_strong(left: utils.Sentence, right: utils.Sentence, num: int):
     
     return ((conj+sep()+conj+sep(left)+left,),), ((right,),)
 
+
+@stoupBlock
 def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num: int):
     """ ... => ...
         ______________
@@ -231,6 +298,7 @@ def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num: int):
         return (None, None)
     
     return ((left,),), ((right,),)
+
 
 RULES = {
     'left and': utils.Rule(
@@ -334,6 +402,7 @@ def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
 
 def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
     left, right = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)[0]
+    left = [i for i in left if i != "^"]
     seps = sum((i.startswith('sep_') for i in left), 1)
 
     # Right part verification
@@ -385,7 +454,7 @@ def get_used_types() -> tuple[str]:
     return USED_TYPES
 
 
-def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence], context: dict[str, tp.Any]) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
+def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence], context: dict[str, tp.Any], auto: bool = False) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
     """Uses a rule of the given name on the provided branch.
         Context allows to give the FormalSystem additional arguments. 
         Use `self.access('FormalSystem').get_needed_context(rule)` to check for needed context
@@ -452,7 +521,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
         context['used'] = used
 
     # Rule usage
-    left, right = rule.func(start_left[:], start_right[:], *context.values())
+    left, right = rule.func(auto, start_left[:], start_right[:], *context.values())
 
 
     # Outcome return

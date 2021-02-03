@@ -5,7 +5,7 @@ prove ((p and (q -> F)) -> F) -> (p -> q) / auto
 prove ((p -> F) -> F) -> (p -> F) / auto
 prove ((p -> F) -> F) -> p / auto
 
-Nie działa tylko w szkockim
+Wymaga stoup:
 prove (((p -> q) -> F) -> F) -> ((q -> F) -> (p -> F)) / auto
 
 Dowodliwe:

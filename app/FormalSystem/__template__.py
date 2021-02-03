@@ -27,7 +27,7 @@ def get_used_types() -> tuple[str]:
     pass
 
 # TODO: Poprawić oznaczenie zwracanego typu
-def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence], context: dict[str, tp.Any]) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
+def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence], context: dict[str, tp.Any], auto: bool) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
     """Uses a rule of the given name on the provided branch.
         Context allows to give the FormalSystem additional arguments. 
         Use `self.access('FormalSystem').get_needed_context(rule)` to check for needed context

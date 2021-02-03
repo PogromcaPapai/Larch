@@ -77,9 +77,9 @@ def solve(delegate: callable, branch: list[utils.Sentence]) -> tuple[tp.Union[st
 
         # Execution
         try:
-            out = delegate(" ".join(rule[:2]), context)
+            out = delegate(" ".join(rule[:2]), context, True)
         except Exception as e:
-            if str(e) == "Operation prohibited by loop detection algorithm":
+            if str(e) in ("Operation prohibited by loop detection algorithm", "There is a sequent that is prioritized", "Rule can't be performed on prioritized sequents"):
                 loops += 1
                 out = None
             else:
