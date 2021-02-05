@@ -321,6 +321,7 @@ RULES = {
 
 
 def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
+    statement = utils.reduce_brackets(statement)
     if not 'turnstile_=>' in statement:
         return ['turnstile_=>']+statement
     else:

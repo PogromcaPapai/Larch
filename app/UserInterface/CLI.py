@@ -387,7 +387,7 @@ def get_rprompt(session):
     # Proof retrieval
     if session.proof:
         prompt, closed = session.getbranch()
-        background = colors[session.branch]
+        background = colors.get(session.branch, colors['Grey']) 
     else:
         prompt = DEF_PROMPT
         closed = None

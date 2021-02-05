@@ -14,6 +14,7 @@ PRECEDENCE = {
     'turnstile': 1
 }
 
+debrac = utils.reduce_brackets
 
 def is_sequent(l, s) -> bool:
     buffor = []
@@ -121,7 +122,7 @@ def stoupManager(func):
         if not auto:
             return func(left, right, num, *args)
         if (priority := stoup_find(left)) is not None:
-            if priority == num:
+            if priority == num-1:
                 res_left, res_right = func([i for i in left if i != "^"], right, num, *args)
                 if res_left is not None:
                     return stoup_add(res_left, func.__name__), res_right
@@ -163,7 +164,7 @@ def rule_left_and(left: utils.Sentence, right: utils.Sentence, num: int):
     if split is None or split[0] is None:
         return (None, None)
     split = split[0]
-    return ((split[0]+sep()+split[1]+sep(left)+left,),), ((right,),)
+    return ((debrac(split[0])+sep()+debrac(split[1])+sep(left)+left,),), ((right,),)
 
 
 @stoupBlock
@@ -180,7 +181,7 @@ def rule_right_and(left: utils.Sentence, right: utils.Sentence):
     if split is None or split[0] is None:
         return (None, None)
     split = split[0]
-    return ((left,),(left,),), ((split[0],),(split[1],),)
+    return ((left,),(left,),), ((debrac(split[0]),),(debrac(split[1]),),)
 
 
 @stoupManager
@@ -198,7 +199,7 @@ def rule_left_or(left: utils.Sentence, right: utils.Sentence, num: int):
     if split is None or split[0] is None:
         return (None, None)
     split = split[0]
-    return ((split[0]+sep(left)+left,),(split[1]+sep(left)+left,),), ((right,),(right,),)
+    return ((debrac(split[0])+sep(left)+left,),(debrac(split[1])+sep(left)+left,),), ((right,),(right,),)
 
 
 @stoupBlock
@@ -233,7 +234,7 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, used: 
         raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
     else:
         get_part(right, 'sep', 0)
-        return ((left,),), ((ret,),)
+        return ((left,),), ((debrac(ret),),)
 
 
 @stoupManager
@@ -251,7 +252,7 @@ def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num: int):
     if split is None or split[0] is None:
         return (None, None)
     split = split[0]
-    return ((conj+sep(left)+left,),(split[1]+sep(left)+left,),), ((split[0],),(right,),)
+    return ((conj+sep(left)+left,),(debrac(split[1])+sep(left)+left,),), ((debrac(split[0]),),(right,),)
 
 
 @stoupBlock
@@ -269,7 +270,7 @@ def rule_right_imp(left: utils.Sentence, right: utils.Sentence):
     if split is None or split[0] is None:
         return (None, None)
     split = split[0]
-    return ((split[0]+sep(left)+left,),), ((split[1],),)
+    return ((debrac(split[0])+sep(left)+left,),), ((debrac(split[1]),),)
 
 
 @stoupBlock
@@ -394,6 +395,7 @@ RULES = {
 
 
 def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
+    statement = utils.reduce_brackets(statement)
     if not 'turnstile_=>' in statement:
         return ['turnstile_=>']+statement
     else:
@@ -500,7 +502,9 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
 
 
     elif name == 'right imp':
-        l, r = utils.strip_around(start_right, "imp", False, PRECEDENCE)[0]
+        if (stripped := utils.strip_around(start_right, "imp", False, PRECEDENCE)) is None:
+            return None, None
+        l, r = stripped[0]
         if is_sequent(start_left, l):
             if tuple(r) not in used:
                 history = [[r]]
@@ -521,7 +525,10 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
         context['used'] = used
 
     # Rule usage
-    left, right = rule.func(auto, start_left[:], start_right[:], *context.values())
+    usage = rule.func(auto, start_left[:], start_right[:], *context.values())
+    if not usage:
+        return None, None
+    left, right = usage
 
 
     # Outcome return

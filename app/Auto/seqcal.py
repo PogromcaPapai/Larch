@@ -17,6 +17,7 @@ PRECEDENCE = {
 }
 
 def find_rule(sen: utils.Sentence) -> tp.Union[list[str], None]:
+    sen = [i for i in sen if i != "^"]
     side = 'left'
     usable = []
     bracket_lvl = 0

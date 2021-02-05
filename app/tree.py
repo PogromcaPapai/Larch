@@ -20,6 +20,7 @@ class TreeError(Exception):
 
 class Tree(object):
     child_limit = 2
+    namegen = random.Random()
 
     # Class methods
 
@@ -74,7 +75,9 @@ class Tree(object):
         """Generates two possible names for the children of this node"""
         possible = [i for i in colors if not i in self.leaves.keys()]
         if len(possible)<am-1:
-            raise TreeError("No names exist")
+            if len(self.leaves) == 1000:
+                raise TreeError("No names exist")
+            return self.name, *[str(self.namegen.randint(0, 1000)) for i in range(am-1)]
         return self.name, *random.choices(possible, k=am-1) 
 
 
