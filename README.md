@@ -16,9 +16,10 @@ Larch *jeszcze* nie posiada profesjonalnych metod instalacji, w związku z czym 
 
 1. Upewnij się, że masz zainstalowany co najmniej **Python 3.9**
 2. Uruchom konsolę swojego systemu operacyjnego.
-3. Zainstaluj paczkę `prompt-toolkit` za pomocą komendy `python -m pip install prompt_toolkit`. Istnieje duża szansa, że już go posiadasz (korzysta z niego chociażby ipython).
-4. Zainstaluj paczkę `anytree` za pomocą komendy `python -m pip install prompt_toolkit`
-5. Pobierz **release** programu z [tego miejsca](https://github.com/PogromcaPapai/Larch/releases)
+3. Zainstaluj wymagane paczki. Możesz to zrobić komendą `python -m pip install -r requirements.txt` będąc w folderze z programem (`cd [ścieżka do folderu]` może się przydać). Możesz też zainstalować wszystkie paczki oddzielnie:
+   1. Zainstaluj paczkę `prompt-toolkit` za pomocą komendy `python -m pip install prompt_toolkit`. Istnieje duża szansa, że już go posiadasz (korzysta z niego chociażby ipython).
+   2. Zainstaluj paczkę `anytree` za pomocą komendy `python -m pip install prompt_toolkit`
+4. Pobierz **release** programu z [tego miejsca](https://github.com/PogromcaPapai/Larch/releases)
 
 Aplikacja powinna być zainstalowana, w razie problemów zapraszamy do kontaktu przez [GitHub Discussions](https://github.com/PogromcaPapai/Larch/discussions), lub [GitHub Issues](https://github.com/PogromcaPapai/Larch/issues).
 
@@ -74,8 +75,8 @@ Jeśli chcesz się zaangażować, możesz skontaktować się z dowolnym z autor�
 ## Autorzy
 
 - Jakub Dakowski (@PogromcaPapai) - :crown: Benevolent dictator for life :crown:
-- [jeszcze nie wiem jak wpisać] - Chief Bzdury Officer :chart_with_upwards_trend:
-- [jeszcze nie wiem jak wpisać] - PM/UX unicorn :unicorn:
+- Barbura Adamska - Chief Bzdury Officer :chart_with_upwards_trend:
+- Robert Szymański (@rsxxi) - PM/UX unicorn :unicorn:
 
 Oraz wszyscy, którzy bacznie przyglądali się rozwojowi aplikacji.
 
