@@ -60,6 +60,8 @@ Więcej informacji na temat uruchomienia znajdziesz w dokumentacji (tu będzie l
 
 Błędy (oraz propozycje) można zgłaszać za pomocą [GitHub Issues](https://github.com/PogromcaPapai/Larch/issues/new/choose). Postaraj się wyjaśnić jak najdokładniej, co się stało - każdy szczegół może okazać się przydatny! Jeśli masz pomysł, co mogło spowodować błąd, możesz spróbować samemu go naprawić!
 
+Bardzo przydatne jest dla nas dołączenie crash reportu, który możesz znaleźć w folderze `crashes`.
+
 ### Tworzenie pluginów
 
 Projekt Larch został utworzony tak, aby umożliwić każdej chętnej osobie tworzenie autorskich metod dowodzenia, formatów wydruku, formatów zapisów, czy interfejsów. 

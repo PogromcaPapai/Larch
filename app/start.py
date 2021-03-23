@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 import pop_engine as pop
 
-DEBUG = False
+DEBUG = True
 
 #             Import schema
 #
