@@ -5,7 +5,6 @@ Autorzy:
     Michał Gajdziszewski - autor skryptu wzorcowego
     Jakub Dakowski (@PogromcaPapai) - autor implementacji
 """
-from app.tree import PrintedTree
 import Output as utils
 from anytree import Node, RenderTree
 
@@ -43,7 +42,7 @@ def write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> list[str]:
     return strs
 
 
-def get_nodes(sentences: list[str], lexem_parser: callable, children: list[PrintedTree]) -> list[Node]: 
+def get_nodes(sentences: list[str], lexem_parser: callable, children: list[utils.PrintedTree]) -> list[Node]: 
     """Zwraca listę dzieci do dania do drzewa.
     Jeżeli istnieją jeszcze zdania w sentences, to mają one pierwszeństwo. W innym przypadku wyliczane są dzieci.
 

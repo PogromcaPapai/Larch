@@ -1,9 +1,11 @@
 import json
 import os
 import sys
-from datetime import now as dtnow
+from datetime import date, datetime
 
 import pop_engine as pop
+
+DEBUG = False
 
 #             Import schema
 #
@@ -39,14 +41,19 @@ if __name__ == "__main__":
                 config = json.load(file)
             UI.plug(config['chosen_plugins']['UserInterface'])
             exit_code = UI().run()
-        sys.exit(exit_code)
 
     # Crash report generator
 
     except BaseException as e:
-        with open('log.log', 'r') as l:
-            logs = l.read()
-        with open(f'crashreport-{dtnow().strftime("%d-%m-%Y-%H-%M")}.txt', 'w') as f:
-            f.write(logs)
-            f.write('\nEXCEPTION:\n')
-            f.write(str(e))
+        if not DEBUG:
+            with open('log.log', 'r') as l:
+                logs = l.read()
+            with open(f'crashes/crash-{datetime.now().strftime("%d-%m-%Y-%H-%M")}.txt', 'w') as f:
+                f.write(logs)
+                f.write('\nEXCEPTION:\n')
+                f.write(str(e))
+        else:
+            raise e
+    
+    else:
+        sys.exit(exit_code)
