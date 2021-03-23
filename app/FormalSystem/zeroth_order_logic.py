@@ -93,7 +93,10 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
                 continue
 
             if utils.reduce_brackets(negated[1:]) == statement:
-                return 1, f"XXX ({num1+1}, {num2+1})", f"Sentences {num1+1} and {num2+1} contradict. The branch was closed."
+                # return 1, f"XXX ({num1+1}, {num2+1})", f"Sentences {num1+1} and {num2+1} contradict. The branch was closed."
+                # TODO: naprawić printowanie numeru zdań
+                return 1, f"XXX", f"Sentences contradict. The branch was closed."
+
     return None
                 
         
