@@ -1,1 +1,1 @@
-{"chosen_plugins": {"UserInterface": "CLI", "Lexicon": "basic", "FormalSystem": "int_seqcal_scottish", "Output": "TeX_infer", "Auto": "seqcal"}}
+{"chosen_plugins": {"UserInterface": "CLI", "Lexicon": "basic", "FormalSystem": "zeroth_order_logic", "Output": "TeX_infer", "Auto": "seqcal"}}
