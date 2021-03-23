@@ -15,12 +15,12 @@ PrintedTree = namedtuple('PrintedTree', ('sentences', 'children', 'closer'))
 
 class TreeError(Exception):
     def __init__(self, msg: str, *args, **kwargs):
-        logger.error(msg)
         super().__init__(msg, *args, **kwargs)
 
 
 class Tree(object):
     child_limit = 2
+    namegen = random.Random()
 
     # Class methods
 
@@ -32,7 +32,7 @@ class Tree(object):
     #     cls.child_limit = amount
 
 
-    def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: tp.Set[int] = set()):
+    def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: set[int] = None):
         """The representation of one node in a tree; non-diverging rules add to this one's statement list. It's accounted for in the interface
 
         :param start_statement: The first statement to insert into the node
@@ -53,7 +53,10 @@ class Tree(object):
         self.parent = parent
         self.children = []
         self.closed = closed
-        self.used = used
+        if used is None:
+            self.used = set()
+        else:    
+            self.used = used
         if leaves_dict is None:
             leaves_dict = OrderedDict()
         leaves_dict[branch_name] = self
@@ -70,7 +73,12 @@ class Tree(object):
 
     def gen_name(self, am=2) -> tuple[str]:
         """Generates two possible names for the children of this node"""
-        return self.name, *random.choices([i for i in colors if not i in self.leaves.keys()], k=am-1) 
+        possible = [i for i in colors if not i in self.leaves.keys()]
+        if len(possible)<am-1:
+            if len(self.leaves) == 1000:
+                raise TreeError("No names exist")
+            return self.name, *[str(self.namegen.randint(0, 1000)) for i in range(am-1)]
+        return self.name, *random.choices(possible, k=am-1) 
 
 
     # Tree reading
@@ -111,7 +119,7 @@ class Tree(object):
         else:
             children = None
             if self.closed:
-                closer = f"XXX ({self.closed[0]+1}, {self.closed[1]+1})"
+                closer = self.closed[0]
             else:
                 closer = ''
         return PrintedTree(sentences=self.statements, children=children, closer=closer)
@@ -205,9 +213,13 @@ class Tree(object):
             return self.parent.getchildren(index)
 
 
-    def is_finished(self):
+    def is_finished(self) -> bool:
         """Checks if all branches are closed"""
         return all((i.closed for i in self.leaves.values()))
+
+    def is_closed(self) -> bool:
+        """Checks if all branches are closed"""
+        return all((i.closed is not None and i.closed[0] == 1 for i in self.leaves.values()))
 
 
     # Tree modification
@@ -250,24 +262,35 @@ class Tree(object):
                 f'Trying to append {len(statements)} branches to the tree')
 
 
-    def close(self, contradicting: int, contradicting2: int = None) -> None:
+    def close(self, info: str, code: int = 1) -> None:
         """Closes the branch using the last
 
-        :param contradicting: ID of the colliding sentence
-        :type contradicting: int
-        :param contradicting2: Use if you already have ID of the second colliding sentence
-        :type contradicting2: int, optional
+        Code list:
+        0 - Empty (nothing more can be done)
+        1 - Classic closure
+        8 - Loop prevention (get it? the loop?)
         """
-        if contradicting2:
-            self.closed = (contradicting2, contradicting)
-        else:
-            self.closed = (len(self.getbranch())-1, contradicting)
+        assert isinstance(info, str) and isinstance(code, int)
+        self.closed = (code, info)
 
-
-    def add_used(self, used: int) -> None:
+    def get_used(self) -> set[Sentence]:
         """
         Adds the statement ID to the used statements set
         Should only be used after non-reusable rules
         """
-        assert used not in self.used
-        self.used.add(used)
+        return self.used.copy()
+
+    def add_used(self, used_l: tuple[tp.Union[int, tuple[str]]]) -> None:
+        """
+        Adds the statement ID to the used statements set
+        Should only be used after non-reusable rules
+        """
+        for used in used_l:
+            assert not isinstance(used, str)
+            #               Code handling:
+            if used == -1:  # Reset set
+                self.used.clear()
+            elif used == 0: # Pass
+                return
+            else:
+                self.used.add(tuple(used))

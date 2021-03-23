@@ -3,16 +3,17 @@ import typing as tp
 
 Sentence = tp.NewType("Sentence", list[str])
 
-Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'reusable'))
+Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'context', 'reusable'))
 
-ContextDef = namedtuple('ContextDef', ('variable', 'official', 'docs', 'type_'))
+ContextDef = namedtuple(
+    'ContextDef', ('variable', 'official', 'docs', 'type_'))
+
 
 class FormalSystemError(Exception):
     pass
 
 
 # Rule decorators
-
 
 def Creator(func):
     """Will allow the function to generate new tuple structures"""
@@ -29,10 +30,12 @@ def Modifier(func):
         if isinstance(statement, tuple):
             calculated = tuple([wrapper(i, *args, **kwargs)
                                 for i in statement])
-            if any((not i for i in calculated)):
-                return ()
+            if any((i is None for i in calculated)):
+                return None
             else:
                 return calculated
+        elif statement is None:
+            return None
         else:
             return func(statement[:], *args, **kwargs)
 
@@ -40,7 +43,6 @@ def Modifier(func):
 
 
 # Formating and cleaning
-
 
 @Modifier
 def reduce_brackets(statement: Sentence) -> Sentence:
@@ -76,7 +78,7 @@ def reduce_brackets(statement: Sentence) -> Sentence:
 
 
 @Modifier
-def quick_bracket_check(reduced: Sentence):
+def quick_bracket_check(reduced: Sentence) -> bool:
     return reduced.count('(') == reduced.count(')')
 
 
@@ -90,8 +92,17 @@ def cleaned(func):
         return returned
     return wrapper
 
+
 # Useful functions for creating rules
 
+def join(tuple_structure: tuple[tuple[str]], ):
+    """
+    docstring
+    """
+    pass
+
+
+# Creators
 
 @Creator
 def empty_creator(statement: Sentence):
@@ -113,6 +124,8 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
     :return: Tuple of generated branch additions
     :rtype: tuple[tuple[Sentence]]
     """
+    if not statement:
+        return None
     lvl = 0
     middle = None
     precedence_keys = precedence.keys()
@@ -123,27 +136,28 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
         elif s == ')':
             lvl -= 1
         elif lvl == 0 and (toktype := s.split('_')[0]) in precedence_keys:
-            if border_precedence>precedence[toktype]:
-                return ()
-            elif border_precedence==precedence[toktype]:
-                if toktype==border_type:
+            if border_precedence > precedence[toktype]:
+                return None
+            elif border_precedence == precedence[toktype]:
+                if toktype == border_type:
                     middle = i
                 else:
                     middle = None
-                    
-
 
     if middle is None:
-        return ()
+        return None
     elif split:
         return ((statement[:middle],), (statement[middle+1:],))
     else:
         return ((statement[:middle], statement[middle+1:]),)
 
 
+# Modifiers
+
 @cleaned
 @Modifier
-def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence: #TODO: Needs optimalization
+# TODO: Needs optimalization
+def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
     """ Deletes a prefix if it closes the rest of the sentence
 
     :param statement: Modified sentence
@@ -156,7 +170,7 @@ def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -
     :return: Modified sentence
     :rtype: Sentence
     """
-    
+
     assert isinstance(statement, list)
 
     if statement[0].startswith(prefix_type):
@@ -170,14 +184,14 @@ def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -
         else:
             reduction = reduce_brackets(statement_no_prefix)
             if reduction.count("(") == statement_no_prefix.count("("):
-                return []
+                return None
             elif reduction.count("(") < statement_no_prefix.count("("):
                 return reduce_brackets(statement[1:])
             else:
                 raise Exception(
                     "After bracket reduction the statement_no_prefix gained a bracket")
     else:
-        return []
+        return None
 
 
 @Modifier
@@ -199,6 +213,54 @@ def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
     else:
         return [f"{prefix}_{lexem}", '(', *statement, ')']
 
+
+def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
+    """Uses func on a part of the sentence
+    Ex.:
+              onpart(s, sep*, 1, f)
+    x0;x1;x3 ----------------------> x0;f(x1);x2
+
+    *in the Basic Lexicon sep is the type of ;
+
+    :param sentence: sentence to use
+    :type sentence: Sentence
+    :param split_type: type of the splitter
+    :type split_type: str
+    :param sent_num: Number of the subsentence to use the rule on, starting from 0
+    :type sent_num: int
+    :param func: Function tu use on the subsentence
+    :type func: callable
+    """
+
+    split_count = 0
+    for start_split, s in enumerate(sentence):
+        if s.startswith(f"{split_type}_"):
+            split_count += 1
+        if split_count == sent_num:
+            break
+
+    if len(sentence) <= start_split or split_count<sent_num:
+        return None
+
+    end_split = start_split+1
+    while end_split<len(sentence) and not sentence[end_split].startswith(f"{split_type}_"):
+        end_split += 1
+
+    if len(sentence)-1 <= end_split:
+        out = func(sentence[start_split+(split_count!=0):])
+    else:
+        out = func(sentence[start_split+(split_count!=0):end_split])
+    
+    if isinstance(out, list):
+        return sentence[:start_split+(split_count!=0)] + out + sentence[end_split:]
+    elif isinstance(out, tuple):
+        l = list()
+        for branch in out:
+            assert isinstance(branch, tuple)
+            l.append(tuple([sentence[:start_split+(split_count!=0)] + i + sentence[end_split:] for i in branch]))
+        return tuple(l)
+    else:
+        return None
 
 def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
     """Allows selective function application in the tuple structure
@@ -236,9 +298,10 @@ def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]
 
     # Tests
     if not tuple_structure:
-        return ()
-    assert len(tuple_structure)==len(selection)
-    assert all((len(tuple_structure[i])==len(selection[i]) for i in range(len(selection))))
+        return None
+    assert len(tuple_structure) == len(selection)
+    assert all((len(tuple_structure[i]) == len(
+        selection[i]) for i in range(len(selection))))
 
     # Execution
     return _select(tuple_structure, selection, func)

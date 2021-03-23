@@ -54,9 +54,7 @@ def parser(statement: str, _dict: dict) -> list[Command]:
     :rtype: list[Command]
     """
     comm = []
-    if ';' in statement:
-        raise ParsingError("Multiple commands not supported yet")
-    for command_raw in statement.split(';'):
+    for command_raw in statement.split('/'):
         # Function parsing
         command = command_raw.strip()
         func = None
@@ -221,7 +219,17 @@ def do_prove(session: engine.Session, sentence: str) -> str:
         return "Sentence tokenized successfully \nProof initialized"
 
 
-def do_use(session, command) -> str:
+def do_auto(session: engine.Session):
+    try:
+        out = session.auto()
+    except engine.EngineError as e:
+        return str(e)
+    if out:
+        return "\n".join(out)
+    else:
+        return "Nothing more can be done"
+
+def do_use(session: engine.Session, command) -> str:
     """Uses a rule in the proof
 
     Arguments:
@@ -239,6 +247,8 @@ def do_use(session, command) -> str:
     context = {}
     c_values = comm_split[2:]
     context_info = session.context_info(name)
+    if context_info is None:
+        return "No such rule"
     if len(c_values)>len(context_info):
         out.append("Too many args, but the program will continue")
     
@@ -269,8 +279,12 @@ def do_use(session, command) -> str:
         # Contradiction handling
         for i in val:
             out.append(do_contra(session, i))
-        if session.proof_finished():
-            out.append("Every branch is closed")
+        
+        ended, closed = session.proof_finished()
+        if closed:
+            out.append("Proof was succesfully finished")
+        elif ended:
+            out.append("All branches are closed")
 
     else:
         out.append("Rule couldn't be used")
@@ -280,9 +294,9 @@ def do_use(session, command) -> str:
 
 def do_contra(session, branch: str):
     """Detects contradictions and handles them by closing their branches"""
-    cont = session.deal_contradiction(branch, 2)
+    cont = session.deal_contradiction(branch)
     if cont:
-        return f"Sentences {cont[0]+1}. and {cont[1]+1}. contradict. Branch {branch} was closed."
+        return cont
     else:
         return f"No contradictions found on branch {branch}."
 
@@ -344,13 +358,14 @@ command_dict = OrderedDict({
     'use': {'comm': do_use, 'args': 'multiple_strings', 'summary': ''},
     'leave': {'comm': do_leave, 'args': [], 'summary': ''},
     'prove': {'comm': do_prove, 'args': 'multiple_strings', 'summary': ''},
+    'auto': {'comm': do_auto, 'args': [], 'summary': ''},
     # Program interaction
     'plugin switch': {'comm': do_plug_switch, 'args': [str, str], 'summary': ''},
     'plugin list all': {'comm': do_plug_list_all, 'args': [], 'summary': ''},
     'plugin list': {'comm': do_plug_list, 'args': [str], 'summary': ''},
     'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'summary': ''},
     'clear': {'comm': do_clear, 'args': [], 'summary': ''},
-    'kaja godek': {'comm': lambda x: "***** ***", 'args': [], 'summary': ''}
+    # 'kaja godek': {'comm': lambda x: "***** ***", 'args': [], 'summary': ''}
 })
 
 
@@ -372,7 +387,7 @@ def get_rprompt(session):
     # Proof retrieval
     if session.proof:
         prompt, closed = session.getbranch()
-        background = colors[session.branch]
+        background = colors.get(session.branch, colors['Grey']) 
     else:
         prompt = DEF_PROMPT
         closed = None
@@ -387,7 +402,7 @@ def get_rprompt(session):
 
     # Adding branch closing symbol
     if closed:
-        s = f"XXX ({closed[0]+1}, {closed[1]+1})"
+        s = closed[1]
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
 
