@@ -74,7 +74,7 @@ Jeśli chcesz się zaangażować, możesz skontaktować się z dowolnym z autor�
 ## Autorzy
 
 - Jakub Dakowski (@PogromcaPapai) - :crown: Benevolent dictator for life :crown:
-- [jeszcze nie wiem jak wpisać] - Chief Bzdury Officer 
+- [jeszcze nie wiem jak wpisać] - Chief Bzdury Officer :chart_with_upwards_trend:
 - [jeszcze nie wiem jak wpisać] - PM/UX unicorn :unicorn:
 
 Oraz wszyscy, którzy bacznie przyglądali się rozwojowi aplikacji.
