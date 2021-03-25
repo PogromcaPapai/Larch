@@ -95,12 +95,6 @@ def cleaned(func):
 
 # Useful functions for creating rules
 
-def join(tuple_structure: tuple[tuple[str]], ):
-    """
-    docstring
-    """
-    pass
-
 
 # Creators
 

@@ -7,6 +7,7 @@ import os
 import typing as tp
 
 import pop_engine as pop
+from sentence import *
 from tree import *
 
 Module = pop.Module
@@ -212,7 +213,7 @@ class Session(object):
             raise EngineError(f"Syntax error: {problem}")
         else:
             tokenized = self.acc('FormalSystem').prepare_for_proving(tokenized)
-            self.proof = Tree(tokenized, branch_name='Linen')
+            self.proof = Tree(Sentence(tokenized), branch_name='Linen')
             self.branch = 'Linen'
 
 

@@ -1,26 +1,48 @@
 from __future__ import annotations
+from app.tree_helpers import Close, History
 
 import typing as tp
 import json, random
 from collections import namedtuple, OrderedDict
-from string import ascii_uppercase as alphabet
 from math import inf as INFINITY
+from anytree import NodeMixin
+from tree_helpers import *
 
 with open('colors.json') as f:
     colors = list(json.load(f).keys())
 
 Sentence = tp.NewType("Sentence", list[str])
-PrintedTree = namedtuple('PrintedTree', ('sentences', 'children', 'closer'))
+PrintedProofNode = namedtuple('PrintedProofNode', ('sentences', 'children', 'closer'))
 
 
-class TreeError(Exception):
+class ProofNodeError(Exception):
     def __init__(self, msg: str, *args, **kwargs):
         super().__init__(msg, *args, **kwargs)
 
 
-class Tree(object):
-    child_limit = 2
+class ProofElement(object):
     namegen = random.Random()
+
+    def __init__(self, sentence: Sentence, branch_name: str, layer: int = 0, history: History = None) -> None:
+        super().__init__()
+        self.sentence = sentence
+        self.branch = branch_name
+        self.closed = None
+        if history is None:
+            self.history = History()
+        else:    
+            self.history = history
+        self.editable = True
+        self.layer = layer
+
+    def close(self, closer: Close):
+        self.closed = Close
+        self.editable = False
+
+
+
+class ProofNode(ProofElement, NodeMixin):
+    child_limit = 2
 
     # Class methods
 
@@ -31,67 +53,30 @@ class Tree(object):
     #     assert isinstance(amount, int)
     #     cls.child_limit = amount
 
-
-    def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: Tree = None, leaves_dict: dict[str, Tree] = None, closed: tp.Union[None, tuple[int]] = None, used: set[int] = None):
-        """The representation of one node in a tree; non-diverging rules add to this one's statement list. It's accounted for in the interface
-
-        :param start_statement: The first statement to insert into the node
-        :type start_statement: Sentence
-        :param branch_name: Name of the branch; use `gen_name` on the parent to find the name, defaults to 'A'
-        :type branch_name: str, optional
-        :param parent: Parent node
-        :type parent: Tree, optional
-        :param leaves_dict: If the tree has a dict of leaves it can be stored here; when not provided system will create an empty dict
-        :type leaves_dict: dict[str, Tree], optional
-        :param closed: Stores information about the closing sentences of this leaf, defaults to None
-        :type closed: tuple[int], optional
-        :param used: A set for storing IDs of sentences which can't be used again in this branch, defaults to an empty set
-        :type used: tp.Set[int], optional
-        """
-        self.name = branch_name
-        self.statements = [start_statement]
-        self.parent = parent
-        self.children = []
-        self.closed = closed
-        if used is None:
-            self.used = set()
-        else:    
-            self.used = used
-        if leaves_dict is None:
-            leaves_dict = OrderedDict()
-        leaves_dict[branch_name] = self
-        self.leaves = leaves_dict
+    #Konstruktor od nowa
+    def __init__(self, start_statement: Sentence, branch_name: str = 'A', parent: ProofNode = None, leaves_dict: dict[str, ProofNode] = None, closed: tp.Union[None, tuple[int]] = None, used: set[int] = None):
+        self.name = ''
 
     # Technical
-
-    @staticmethod
-    def _dist(a: Tree, b: Tree) -> int:
-        """Calculates distance between two letters"""
-        assert a.leaves == b.leaves
-        return list(a.leaves.keys()).index(a.name) - list(a.leaves.keys()).index(b.name)
-
 
     def gen_name(self, am=2) -> tuple[str]:
         """Generates two possible names for the children of this node"""
         possible = [i for i in colors if not i in self.leaves.keys()]
         if len(possible)<am-1:
             if len(self.leaves) == 1000:
-                raise TreeError("No names exist")
+                raise ProofNodeError("No names exist")
             return self.name, *[str(self.namegen.randint(0, 1000)) for i in range(am-1)]
         return self.name, *random.choices(possible, k=am-1) 
 
 
-    # Tree reading
+    # ProofNode reading
 
 
-    def getroot(self) -> Tree:
-        if self.parent:
-            return self.parent.getroot()
-        else:
-            return self
+    def getroot(self) -> ProofNode:
+        return self.path[0]
 
 
-    def getchildren(self, index=None) -> tuple[Tree]:
+    def getchildren(self, index=None) -> tuple[ProofNode]:
         if not index is None:
             return self.children[index]
         else:
@@ -122,38 +107,36 @@ class Tree(object):
                 closer = self.closed[0]
             else:
                 closer = ''
-        return PrintedTree(sentences=self.statements, children=children, closer=closer)
+        return PrintedProofNode(sentences=self.statements, children=children, closer=closer)
 
 
-    def getleaves(self, *names: tp.Iterable[str]) -> list[Tree]:
+    def findleaves(self, *names: tp.Iterable[str]) -> list[ProofNode]:
         """Returns all or chosen leaves (if names are provided as args)
 
         :return: List of the leaves
-        :rtype: list[Tree]
+        :rtype: list[ProofNode]
         """
-        if names:
-            return [self.leaves.get(i, None) for i in names]
-        else:
-            return list(self.leaves.values())
+        return (i for i in self.leaves if i.)
 
 
-    def getopen(self, *names: tp.Iterable[str]) -> tp.Iterator[Tree]:
+    def getopen(self) -> tp.Iterator[ProofNode]:
         """Returns all or chosen open leaves (if names are provided as args)
 
         :return: Iterator of the leaves
-        :rtype: tp.Iterator[Tree]
+        :rtype: tp.Iterator[ProofNode]
         """
-        return (i for i in self.getleaves(*names) if not i.closed)
+        return (i for i in self.leaves if not i.closed)
 
 
+    #NA PEWNO ZBĘDNE, JEST DO TEGO FUNKCJA
     def getbranch_neighbour(self, left_right: str):
         """Return left/right neighbour of the branch
 
         :param left_right: 'L/Left' or 'R/Right'
         :type left_right: str
-        :raises TreeError: left_right is not a valid direction
+        :raises ProofNodeError: left_right is not a valid direction
         :return: A leaf of the neighbour branch
-        :rtype: Tree
+        :rtype: ProofNode
         """
         min_dist = INFINITY
         obj_w_min = None
@@ -175,18 +158,19 @@ class Tree(object):
             return obj_w_min
 
         else:
-            raise TreeError(f"'{left_right}' is not a valid direction")
+            raise ProofNodeError(f"'{left_right}' is not a valid direction")
             return None
 
 
-    def getnode_neighbour(self, left_right: str) -> tp.Union[Tree]:
+    #NA PEWNO ZBĘDNE, JEST DO TEGO FUNKCJA
+    def getnode_neighbour(self, left_right: str) -> tp.Union[ProofNode]:
         """Return left/right neighbour of the node 
 
         :param left_right: 'L/Left' or 'R/Right'
         :type left_right: str
-        :raises TreeError: left_right is not a valid direction
+        :raises ProofNodeError: left_right is not a valid direction
         :return: The neighbour
-        :rtype: Tree
+        :rtype: ProofNode
         """
         if not self.parent:
             return None
@@ -198,7 +182,7 @@ class Tree(object):
         elif left_right.upper() in ('L', 'LEFT'):
             index -= 1
         else:
-            raise TreeError(f"'{left_right}' is not a valid direction")
+            raise ProofNodeError(f"'{left_right}' is not a valid direction")
 
         # Get neighbour
         if index >= len(self.parent.getchildren()) or index < 0:
@@ -213,16 +197,16 @@ class Tree(object):
             return self.parent.getchildren(index)
 
 
-    def is_finished(self) -> bool:
-        """Checks if all branches are closed"""
-        return all((i.closed for i in self.leaves.values()))
-
     def is_closed(self) -> bool:
-        """Checks if all branches are closed"""
-        return all((i.closed is not None and i.closed[0] == 1 for i in self.leaves.values()))
+        """Sprawdza, czy wszystkie gałęzie zamknięto"""
+        return all((i.closed for i in self.leaves))
+
+    def is_successful(self) -> bool:
+        """Sprawdza, czy wszystkie liście zamknięto ze względu na sukces"""
+        return all((i.closed is not None and i.closed.success == 1 for i in self.getroot().leaves))
 
 
-    # Tree modification
+    # ProofNode modification
 
 
     def _add_statements(self, statements: tuple[Sentence]) -> None:
@@ -238,7 +222,7 @@ class Tree(object):
         """Adds statements as children of the node"""
         names = self.gen_name()
         for i, sentence in enumerate(statements):
-            self.children.append(Tree(
+            self.children.append(ProofNode(
                 sentence[0], names[i], self, leaves_dict=self.leaves, closed=self.closed, used=self.used.copy()))
             if (to_add := sentence[1:]):
                 self.children[-1].append((to_add,))
@@ -250,7 +234,7 @@ class Tree(object):
 
         :param statements: Statements grouped into branches
         :type statements: tuple[tuple[str]]
-        :raises TreeError: Too much branches to append
+        :raises ProofNodeError: Too much branches to append
         """
         assert isinstance(statements, tuple)
         if len(statements) == 1:
@@ -258,7 +242,7 @@ class Tree(object):
         elif len(statements) == self.child_limit:
             self._add_children(*statements)
         else:
-            raise TreeError(
+            raise ProofNodeError(
                 f'Trying to append {len(statements)} branches to the tree')
 
 
