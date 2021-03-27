@@ -7,8 +7,9 @@ import os
 import typing as tp
 
 import pop_engine as pop
-from sentence import *
-from tree import *
+from sentence import Sentence
+from tree import ProofNode
+from tree_helpers import Close
 
 Module = pop.Module
 
@@ -212,9 +213,9 @@ class Session(object):
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise EngineError(f"Syntax error: {problem}")
         else:
-            tokenized = self.acc('FormalSystem').prepare_for_proving(tokenized)
-            self.proof = Tree(Sentence(tokenized), branch_name='Linen')
-            self.branch = 'Linen'
+            tokenized = Sentence(self.acc('FormalSystem').prepare_for_proving(tokenized))
+            self.proof = ProofNode(tokenized, 'Green')
+            self.branch = 'Green'
 
 
     @EngineLog
@@ -233,7 +234,7 @@ class Session(object):
 
         try:
             branch, _ = self.proof.getleaves(branch_name)[0].getbranch()
-            used = self.proof.getleaves(branch_name)[0].get_used()
+            used = self.proof.getleaves(branch_name)[0].gethistory()
         except ValueError as e:
             if e.message == 'not enough values to unpack (expected 2, got 1)':
                 raise EngineError(
@@ -244,6 +245,7 @@ class Session(object):
         # Branch checking
         out = self.acc('FormalSystem').check_contradict(branch, used)
         if out:
+            # TODO: USUNĄĆ KODY
             code, printed, info = out
             EngineLog(
                 f"Closing {branch_name}: {code=}, {info=}")
@@ -258,6 +260,8 @@ class Session(object):
         return self.acc('FormalSystem').get_needed_context(rule)
 
 
+
+    # TODO: użycie obiektu Sentence wewnątrz
     @EngineLog
     @DealWithPOP
     def use_rule(self, rule: str, context: dict[str, tp.Any], auto: bool = False) -> tp.Union[None, tuple[str]]:
@@ -286,7 +290,7 @@ class Session(object):
 
         # Statement and used retrieving
         branch = self._get_node().getbranch()[0][:]
-        used = self._get_node().get_used()
+        used = self._get_node().gethistory()
     
         # Rule execution
         try:
@@ -298,16 +302,16 @@ class Session(object):
         if out is not None:
             old = self._get_node()
             self._get_node().append(out)
-            children = old.getchildren()
+            children = old.children
             
             if not children:
                 assert len(used_extention)==1, "Wrong used_extention length"
-                self._get_node().add_used(used_extention[0])
+                self._get_node().History(used_extention[0])
                 return (old.name,)
             else:
                 for j, s in zip(children, used_extention):
-                    j.add_used(s)
-                return tuple([i.name for i in children])
+                    j.History(*s)
+                return tuple([i.branch for i in children])
         else:
             return None
 
@@ -322,7 +326,7 @@ class Session(object):
 
         black = set()
         out = []
-        while len(leaves := [i.name for i in self.proof.getopen() if not i.name in black])>0:
+        while len(leaves := [i.branch for i in self.proof.getopen() if not i.branch in black])>0:
             
             out.append(f"Jumping to {leaves[0]} branch")
             self.jump(leaves[0])
@@ -331,7 +335,7 @@ class Session(object):
             if info:
                 out.append(info)
                 if info=="Branch always loops":
-                    self.proof.getleaves(leaves[0])[0].close("...", 8)
+                    self.proof.getleaves(leaves[0])[0].close(Close.Emptiness)
                     black.add(leaves[0])
                     continue
                 for branch in branches:
@@ -379,7 +383,7 @@ class Session(object):
             raise EngineError(
                 "There is no proof started")
 
-        return list(self.proof.leaves.keys())
+        return self.getbranchnames()
 
 
     @DealWithPOP
@@ -404,23 +408,23 @@ class Session(object):
         if not self.proof:
             raise EngineError("There is no proof started")
 
-        for name, tree in self.proof.leaves.items():
-            if name == self.branch:
+        for node in self.proof.getleaves():
+            if node.branch == self.branch:
                 continue
-            elif tree.closed:
+            elif node.closed:
                 continue
             else:
-                self.branch = name
-                return f"Branch changed to {name}"
+                self.branch = node.branch
+                return f"Branch changed to {node.branch}"
         raise EngineError("All branches are closed")
 
     
     def proof_finished(self) -> tuple[bool, bool]:
-        """Checks if proof is finished"""
+        """Zwraca informację o zamknięciu wszystkich gałęzi oraz o ich zamknięciu ze względu na zakończenie dowodzenia w nich"""
         if not self.proof:
             raise EngineError("There is no proof started")
-        return self.proof.is_finished(), self.proof.is_closed()
-
+        return self.proof.is_closed(), self.proof.is_successful()
+ 
 
     def jump(self, new: str) -> None:
         """Jumps between branches of the proof
@@ -454,6 +458,6 @@ class Session(object):
         return self.SOCKETS
 
     def _get_node(self):
-        return self.proof.leaves[self.branch]
+        return self.proof.getleaves(self.branch)[0]
 
 # Misc

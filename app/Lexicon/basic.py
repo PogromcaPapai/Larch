@@ -75,6 +75,18 @@ def letter_range(regex: str) -> tuple[int, int]:
     return alphabet.index(regex[1]), alphabet.index(regex[3])
 
 
+def sign_list(type_: str) -> list[str]:
+    """Zwraca listę potencjalnych znaków dla typów zmiennych (sentvar, predicate itp.)"""
+    for letters, var_type in full_lexicon.get('variables'):
+        if var_type == type_:
+            break
+    else:
+        raise Exception("Taki typ nie został zdefiniowany")
+    
+    i, j = letter_range(letters)
+    return list(alphabet[i:j])
+
+
 def check_range(letter: str, indexA: int, indexB: int) -> bool:
     """Checks if letter's index is in <indexA, indexB>"""
     assert len(letter) == 1
