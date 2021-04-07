@@ -54,6 +54,9 @@ class History(set):
     def __contains__(self, item: Sentence) -> bool:
         return super().__contains__(hash(item))
 
+    def copy(self):
+        return History(super().copy())
+
 
 
 class Close(object):

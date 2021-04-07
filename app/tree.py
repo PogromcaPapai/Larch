@@ -51,7 +51,7 @@ class ProofElement(object):
         """
         Zwraca zbiór hashowanych wartości zdań znajdujących się whistorii. Hashowaną wartość można uzyskać z `hash(Sentence)`.
         """
-        return History(self.history.copy())
+        return self.history.copy()
 
 
     def History(self, *commands: tuple[tp.Union[Sentence, int, callable]]) -> None:
