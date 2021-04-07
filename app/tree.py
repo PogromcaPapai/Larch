@@ -36,11 +36,6 @@ class ProofElement(object):
         self.layer = layer
 
 
-    def close(self, closer: Close):
-        self.closed = closer
-        self.editable = False
-
-
     def close(self, close: Close = None, text: str = None, success: bool = None) -> None:
         """Zamyka gałąź używając obiektu `Close`, lub tekstu do wyświetlania użytkownikowi oraz informacje, czy można uznać to zamknięcie za sukces (dla przykładu: sprzeczność w tabeli analitycznej jest sukcesem, próba zapobiegnięcia pętli już nie)"""
         assert self.is_leaf, "Można zamykać tylko liście"
@@ -49,6 +44,7 @@ class ProofElement(object):
         else:
             assert isinstance(text, str) and isinstance(success, bool)
             self.closed = Close(success, text)
+        self.editable = False
 
 
     def gethistory(self) -> set[Sentence]:
@@ -77,7 +73,7 @@ class ProofElement(object):
 class ProofNode(ProofElement, NodeMixin):
     namegen = random.Random()
 
-    #Konstruktor od nowa
+
     def __init__(self, sentence: Sentence, branch_name: str, layer: int = 0, history: History = None, parent: ProofNode = None, children: tp.Iterable[ProofNode] = []):
         """Reprezentacja pojedynczego zdania w drzewie
 

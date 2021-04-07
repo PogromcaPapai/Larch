@@ -10,6 +10,10 @@ function = type(_f)
 
 class History(set):
     """Zbiór reprezentujący historię"""
+    OPS = {
+        'pass':     0,
+        'clear':    -1
+    }
 
     def __init__(self, iterable: Iterable[Any] = {}) -> None:
         """Zbiór reprezentujący historię"""
@@ -29,8 +33,8 @@ class History(set):
                 - `Sentence`    - dodaje formułę do historii 
                 - `callable`    - wykonuje operacje `callable(history)` na obiekcie historii, a wynik nadpisuje jako nową historię; traktuj ją jako `set`
                 - `int`         - wykonuje jedną z predefiniowanych operacji:
-                    - 0 - operacja pusta
-                    - 1 - reset historii
+                    -  0 - operacja pusta
+                    - -1 - czyszczenie historii
 
             :raises TypeError: Typ nie jest obsługiwany 
         """
@@ -40,7 +44,7 @@ class History(set):
             elif isinstance(command, function):
                 self = History(command(self))
             elif isinstance(command, int):
-                if command == -1:  # Reset set
+                if command == -1:  # Clear set
                     self.clear()
                 elif command == 0: # Pass
                     pass

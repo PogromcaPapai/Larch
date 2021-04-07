@@ -1,4 +1,3 @@
-from re import S
 from typing import Any
 
 class SentenceError(Exception):
