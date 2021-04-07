@@ -33,7 +33,7 @@ class Sentence(list):
 
     def normalizeVars(self):
         """
-        Przepisuje zdanie do formy o znormalizowanej kolejności stałych i zmiennych 
+        Przepisuje zdanie do formy o znormalizowanej kolejności stałych i zmiennych.
 
         :return: Przekształcone zdanie
         :rtype: Sentence
@@ -59,8 +59,7 @@ class Sentence(list):
     def getUnique(self) -> list[str]:
         """Zwraca zapis unikalny dla tego zdania; odporne na różnice w formacie zapisu"""
         ret = []
-        sen = self.normalizeVars()
-        for typ, lex in zip(sen.getTypes(), sen.getLexems()):
+        for typ, lex in zip(self.getTypes(), self.getLexems()):
             if typ in ('indvar', 'constant', 'predicate', 'function', 'sentvar'):
                 ret.append(lex)
             else:
