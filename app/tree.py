@@ -5,7 +5,7 @@ import typing as tp
 import json, random
 from collections import namedtuple, OrderedDict
 from math import inf as INFINITY
-from anytree import NodeMixin, util
+from anytree import NodeMixin, util, LevelOrderIter
 from tree_helpers import *
 
 with open('colors.json') as f:
@@ -47,9 +47,9 @@ class ProofElement(object):
         self.editable = False
 
 
-    def gethistory(self) -> set[Sentence]:
+    def gethistory(self) -> History:
         """
-        Zwraca zbiór hashowanych wartości zdań znajdujących się whistorii. Hashowaną wartość można uzyskać z `hash(Sentence)`.
+        Zwraca hashowane wartości zdań znajdujących się w historii (w formie `History` - podklasy zbioru). Hashowaną wartość można uzyskać z `hash(Sentence)`.
         """
         return self.history.copy()
 
@@ -195,7 +195,7 @@ class ProofNode(ProofElement, NodeMixin):
     def append(self, sentences: tp.Iterable[tuple[Sentence]]):
         """Dodaje zdania do drzewa"""
         names = self.gen_name(am=len(sentences))
-        layer = self.layer+1
+        layer = max((i.layer for i in self.getleaves()))+1
         for i, branch in enumerate(sentences):
             par = self
             for sen in branch:
