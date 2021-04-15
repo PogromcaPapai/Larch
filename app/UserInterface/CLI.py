@@ -6,6 +6,7 @@ import typing as tp
 from collections import OrderedDict, namedtuple
 from math import log10
 from xml.sax.saxutils import escape
+import close
 
 import engine
 import prompt_toolkit as ptk

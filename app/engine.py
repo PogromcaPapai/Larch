@@ -9,7 +9,7 @@ import typing as tp
 import pop_engine as pop
 from sentence import Sentence
 from tree import ProofNode
-from tree_helpers import Close
+from close import Close
 
 Module = pop.Module
 

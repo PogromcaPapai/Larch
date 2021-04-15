@@ -1,5 +1,4 @@
 from __future__ import annotations
-from tree_helpers import Close, History
 
 import typing as tp
 import json, random
@@ -7,6 +6,7 @@ from collections import namedtuple, OrderedDict
 from math import inf as INFINITY
 from anytree import NodeMixin, util, LevelOrderIter
 from tree_helpers import *
+from close import *
 
 with open('colors.json') as f:
     colors = list(json.load(f).keys())

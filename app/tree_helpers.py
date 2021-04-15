@@ -1,4 +1,3 @@
-from string import Template
 from typing import Any, Union, NewType, Iterable
 
 Sentence = NewType("Sentence", list[str])
@@ -56,37 +55,3 @@ class History(set):
 
     def copy(self):
         return History(super().copy())
-
-
-
-class Close(object):
-    """Stempel przybijany na zamkniętą gałąź"""
-
-
-    def __init__(self, success: bool, symbols: str, symbols_template: Template = None) -> None:
-        """Stempel przybijany na zamkniętą gałąź
-
-        :param success: Czy system powinien traktować takie zamknięcie jako krok do skończenia dowodu
-        :type success: bool
-        :param symbols: Zapis wyświetlany użytkownikowi przy zamkniętej gałęzi
-        :type symbols: str
-        :param symbols_template: Wzór do wypełnienia i wyświetlenia użytkownikowi (pozwala przykładowo na zapis "XXX ([numer zdania], [numer zdania])"), defaults to None
-        :type symbols_template: Template, optional
-        """
-        super().__init__()
-        self.symbols = symbols
-        self.template = symbols_template
-        self.success = success
-
-    def __call__(self, **kwds: Any):
-        if not self.template:
-            raise Exception("Nie możesz użyć wzorca, jeżeli nie został on podany")
-        return Close(self.template.substitute(kwds))
-    
-    def __str__(self) -> str:
-        return self.symbols
-
-
-Close.Emptiness = Close(False, "---")
-Close.AT_Contradiction = Close(True, "XXX", "XXX ($sentID1, $sentID2)")
-Close.LoopCheck = Close(False, "...")
