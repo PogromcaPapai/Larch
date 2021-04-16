@@ -130,5 +130,5 @@ dmypy.json
 
 
 .vscode
-app/config.json
+app/config/.
 crashes/.
