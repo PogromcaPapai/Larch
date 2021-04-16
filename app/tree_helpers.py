@@ -9,6 +9,7 @@ function = type(_f)
 
 class History(set):
     """Zbiór reprezentujący historię"""
+    
     OPS = {
         'pass':     0,
         'clear':    -1

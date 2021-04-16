@@ -21,9 +21,11 @@ class ProofNodeError(Exception):
 
 
 class ProofElement(object):
+    """Klasa macierzysta dla ProofNode implementująca wszystkie czysto dowodowe elementy"""
 
 
     def __init__(self, sentence: Sentence, branch: str, layer: int = 0, history: History = None) -> None:
+        """Używaj ProofNode"""
         super().__init__()
         self.sentence = sentence
         self.branch = branch
@@ -34,7 +36,6 @@ class ProofElement(object):
             self.history = history
         self.editable = True
         self.layer = layer
-
 
     def close(self, close: Close = None, text: str = None, success: bool = None) -> None:
         """Zamyka gałąź używając obiektu `Close`, lub tekstu do wyświetlania użytkownikowi oraz informacje, czy można uznać to zamknięcie za sukces (dla przykładu: sprzeczność w tabeli analitycznej jest sukcesem, próba zapobiegnięcia pętli już nie)"""
@@ -66,11 +67,12 @@ class ProofElement(object):
 
             :raises TypeError: Typ nie jest obsługiwany 
         """
-        self.history(commands)
+        self.history(*commands)
 
 
 
 class ProofNode(ProofElement, NodeMixin):
+    """Reprezentacja pojedynczego zdania w drzewie"""
     namegen = random.Random()
 
 
@@ -109,12 +111,12 @@ class ProofNode(ProofElement, NodeMixin):
         return self.branch, *random.choices(possible, k=am-1)
     
 
-    # ProofNode reading
+    # Nawigacja
 
 
     def getbranchnames(self):
+        """Zwraca nazwy wszystkich gałęzi w dowodzie"""
         return [i.branch for i in self.getleaves()]
-
 
 
     def getbranch(self) -> tuple[list[Sentence], Close]:
@@ -134,13 +136,13 @@ class ProofNode(ProofElement, NodeMixin):
                 closer = self.closed[0]
             else:
                 closer = None
-        return PrintedProofNode(sentences=self.statements, children=children, closer=closer)
+        return PrintedProofNode(sentences=self.sentence, children=children, closer=closer)
 
 
     def getleaves(self, *names: tp.Iterable[str]) -> list[ProofNode]:
-        """Returns all or chosen leaves (if names are provided as args)
+        """Zwraca wszystkie liście *całego drzewa*, bądź tylko liście o wybranych nazwach (jeśli zostaną podane w `names`)
 
-        :return: List of the leaves
+        :names: Iterable[str]
         :rtype: list[ProofNode]
         """
         if names:
@@ -149,22 +151,19 @@ class ProofNode(ProofElement, NodeMixin):
             return self.root.leaves
 
 
-    def getopen(self) -> tp.Iterator[ProofNode]:
-        """Returns all or chosen open leaves (if names are provided as args)
-
-        :return: Iterator of the leaves
-        :rtype: tp.Iterator[ProofNode]
-        """
-        return (i for i in self.getleaves() if not i.closed)
+    def getopen(self) -> list[ProofNode]:
+        """Zwraca listę *otwartych* liści całego drzewa"""
+        return [i for i in self.getleaves() if not i.closed]
 
 
-    def getnode_neighbour(self, left_right: str) -> tp.Union[ProofNode]:
-        """Return left/right neighbour of the node 
+    def getnode_neighbour(self, left_right: str) -> ProofNode:
+        """Zwraca prawego, lub lewego sąsiada danego węzła. 
+        Równie dobrze można używać `anytree.util.rightsibling(self)` oraz `anytree.util.leftsibling(self)`
 
-        :param left_right: 'L/Left' or 'R/Right'
+        :param left_right: 'L/Left' lub 'R/Right'
         :type left_right: str
-        :raises ProofNodeError: left_right is not a valid direction
-        :return: The neighbour
+        :raises ProofNodeError: Podano niepoprawny kierunek
+        :return: Sąsiad
         :rtype: ProofNode
         """
         if not self.parent:
@@ -186,11 +185,11 @@ class ProofNode(ProofElement, NodeMixin):
 
 
     def is_successful(self) -> bool:
-        """Sprawdza, czy wszystkie liście zamknięto ze względu na sukces"""
+        """Sprawdza, czy wszystkie liście zamknięto *ze względu na sukces*"""
         return all((i.closed is not None and i.closed.success == 1 for i in self.getleaves()))
 
 
-    # ProofNode modification
+    # Modyfikacja
 
     def append(self, sentences: tp.Iterable[tuple[Sentence]]):
         """Dodaje zdania do drzewa"""

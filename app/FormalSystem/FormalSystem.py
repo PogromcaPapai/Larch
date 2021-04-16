@@ -153,7 +153,7 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
 @Modifier
 # TODO: Needs optimalization
 def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
-    """ Deletes a prefix if it closes the rest of the sentence
+    """Deletes a prefix if it closes the rest of the sentence
 
     :param statement: Modified sentence
     :type statement: Sentence

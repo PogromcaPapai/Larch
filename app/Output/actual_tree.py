@@ -43,7 +43,7 @@ def write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> list[str]:
 
 
 def get_nodes(sentences: list[str], lexem_parser: callable, children: list[utils.PrintedTree]) -> list[Node]: 
-    """Zwraca listę dzieci do dania do drzewa.
+    """Zwraca listę dzieci do dodania do drzewa.
     Jeżeli istnieją jeszcze zdania w sentences, to mają one pierwszeństwo. W innym przypadku wyliczane są dzieci.
 
     :param sentences: PrintedTree.sentences
