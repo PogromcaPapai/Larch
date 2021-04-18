@@ -146,7 +146,6 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
     else:
         return ((statement[:middle], statement[middle+1:]),)
 
-
 # Modifiers
 
 @cleaned
