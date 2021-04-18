@@ -246,6 +246,7 @@ class Session(object):
         
         # Branch checking
         out = self.acc('FormalSystem').check_contradict(branch, used)
+
         if out:
             # TODO: USUNĄĆ KODY
             code, printed, info = out

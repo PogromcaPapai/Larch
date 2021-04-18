@@ -56,6 +56,7 @@ class Sentence(list):
         return buffor
 
 
+    # TODO:  standaryzacja symetryczności operacji
     def getUnique(self) -> list[str]:
         """Zwraca zapis unikalny dla tego zdania; odporne na różnice w formacie zapisu"""
         ret = []
