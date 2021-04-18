@@ -375,7 +375,7 @@ class Session(object):
 
 
     @DealWithPOP
-    def getbranch(self) -> list[list[str], tp.Union[tuple[int, int], None]]:
+    def getbranch(self) -> list[list[str], str]:
         """Zwraca gałąź oraz stan zamknięcia w formie czytelnej dla użytkownika"""
         try:
             branch, closed = self._get_node().getbranch()
