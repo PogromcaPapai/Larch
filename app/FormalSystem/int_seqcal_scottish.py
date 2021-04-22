@@ -31,11 +31,9 @@ def is_sequent(l, s) -> bool:
     return False
 
 
-def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
+def pop_part(sentence: utils.Sentence, split_type: str, sent_num: int):
     """
-    Returns n-th part of the sentence (split_types is the type of separator)
-
-    Changes the sentence!!
+    Zwraca n-te podzdanie (podział według obiektów split_type) usuwając je ze zdania
     """
     split_count = 0
     start_split = 0
@@ -63,7 +61,7 @@ def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
 
 def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str):
     """
-    Merges two tuple structures into one
+    Łączy struktury krotek w jedną dodając do siebie zdania z `glue` między nimi
     """
     if isinstance(left, tuple) and isinstance(left, tuple):
         assert len(left) == len(right), "Tuples not of equal length"
@@ -156,7 +154,7 @@ def rule_left_and(left: utils.Sentence, right: utils.Sentence, num: int):
         A&B,... => ...
     """
     try:
-        conj = get_part(left, 'sep', num-1)
+        conj = pop_part(left, 'sep', num-1)
     except IndexError:
         return (None, None)
     
@@ -173,7 +171,7 @@ def rule_right_and(left: utils.Sentence, right: utils.Sentence):
         __________________________
         ... => A&B
     """
-    conj = get_part(right, 'sep', 0)
+    conj = pop_part(right, 'sep', 0)
     if conj is None:
         return (None, None)
 
@@ -191,7 +189,7 @@ def rule_left_or(left: utils.Sentence, right: utils.Sentence, num: int):
         AvB,... => ...
     """
     try:
-        conj = get_part(left, 'sep', num-1)
+        conj = pop_part(left, 'sep', num-1)
     except IndexError:
         return (None, None)
     
@@ -233,7 +231,7 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, used: 
     if ret in used:
         raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
     else:
-        get_part(right, 'sep', 0)
+        pop_part(right, 'sep', 0)
         return ((left,),), ((debrac(ret),),)
 
 
@@ -244,7 +242,7 @@ def rule_left_imp(left: utils.Sentence, right: utils.Sentence, num: int):
         A -> B,... => ...
     """
     try:
-        conj = get_part(left, 'sep', num-1)
+        conj = pop_part(left, 'sep', num-1)
     except IndexError:
         return (None, None)
     
@@ -262,7 +260,7 @@ def rule_right_imp(left: utils.Sentence, right: utils.Sentence):
         ... => A -> B
     """
     try:
-        conj = get_part(right, 'sep', 0)
+        conj = pop_part(right, 'sep', 0)
     except IndexError:
         return (None, None)
     
@@ -280,7 +278,7 @@ def rule_left_strong(left: utils.Sentence, right: utils.Sentence, num: int):
         ..., A => ...
     """
     try:
-        conj = get_part(left, 'sep', num-1)
+        conj = pop_part(left, 'sep', num-1)
     except IndexError:
         return (None, None)
     
@@ -294,7 +292,7 @@ def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num: int):
         ..., A => ...
     """
     try:
-        conj = get_part(left, 'sep', num-1)
+        conj = pop_part(left, 'sep', num-1)
     except IndexError:
         return (None, None)
     
@@ -303,14 +301,14 @@ def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num: int):
 
 RULES = {
     'left and': utils.Rule(
-        symbolic="",
+        symbolic="A&B, ... => ... // A, B, ... => ...",
         docs="",
         func=rule_left_and,
         reusable=None, # Not needed
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
-            docs='',
+            docs='The number of the sequent\'s element',
             type_=int
         )]
     ),
@@ -322,7 +320,7 @@ RULES = {
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
-            docs='',
+            docs='The number of the sequent\'s element',
             type_=int
         )]
     ),
@@ -354,7 +352,7 @@ RULES = {
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
-            docs='',
+            docs='The number of the sequent\'s element',
             type_=int
         )]
     ),
@@ -373,7 +371,7 @@ RULES = {
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
-            docs='',
+            docs='The number of the sequent\'s element',
             type_=int
         )]
     ),
@@ -385,7 +383,7 @@ RULES = {
         context=[utils.ContextDef(
             variable='partID',
             official='Subsentence number',
-            docs='',
+            docs='The number of the sequent\'s element',
             type_=int
         )]
     ),
@@ -414,7 +412,7 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
     if len(left)==0:
         return None
     for i in range(0, seps):
-        f = get_part(left[:], 'sep', i)
+        f = pop_part(left[:], 'sep', i)
 
         # F, ... => ...
         if len(f)==1 and f[0].startswith("falsum_"):
@@ -484,7 +482,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
     # Loop detection
     history = None
     if name == "left imp":
-        p = get_part(start_left[:], 'sep', context['partID']-1)
+        p = pop_part(start_left[:], 'sep', context['partID']-1)
         l, r = utils.strip_around(p, "imp", False, PRECEDENCE)[0]
         if tuple(l) in used:
             raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
@@ -493,7 +491,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
 
 
     elif name == 'left or':
-        p = get_part(start_left[:], 'sep', context['partID']-1)
+        p = pop_part(start_left[:], 'sep', context['partID']-1)
         l, r = utils.strip_around(p, "or", False, PRECEDENCE)[0]
         if is_sequent(start_left, l) or is_sequent(start_left, r):
             raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")

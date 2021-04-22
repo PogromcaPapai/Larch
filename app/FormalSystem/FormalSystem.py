@@ -17,28 +17,28 @@ class FormalSystemError(Exception):
 # Rule decorators
 
 def Creator(func):
-    """Will allow the function to generate new tuple structures"""
-    def wrapper(statement, *args, **kwargs):
+    """Funkcje z tym dekoratorem mogą tworzyć nowe struktury krotek"""
+    def wrapper(sentence, *args, **kwargs):
         assert not isinstance(
-            statement, tuple), "Tuple structure already exists"
-        return func(statement, *args, **kwargs)
+            sentence, tuple), "Tuple structure already exists"
+        return func(sentence, *args, **kwargs)
     return wrapper
 
 
 def Modifier(func):
-    """Will only iterate iterate through existing tuple structures"""
-    def wrapper(statement, *args, **kwargs):
-        if isinstance(statement, tuple):
+    """Funkcje z tym dekoratorem mogą tylko iterować po istniejących strukturach krotek"""
+    def wrapper(sentence, *args, **kwargs):
+        if isinstance(sentence, tuple):
             calculated = tuple([wrapper(i, *args, **kwargs)
-                                for i in statement])
+                                for i in sentence])
             if any((i is None for i in calculated)):
                 return None
             else:
                 return calculated
-        elif statement is None:
+        elif sentence is None:
             return None
         else:
-            return func(statement[:], *args, **kwargs)
+            return func(sentence[:], *args, **kwargs)
 
     return wrapper
 
@@ -46,14 +46,14 @@ def Modifier(func):
 # Formating and cleaning
 
 @Modifier
-def reduce_brackets(statement: Sentence) -> Sentence:
-    """Reduces the amount of brackets around a sentence"""
-    assert isinstance(statement, list)
+def reduce_brackets(sentence: Sentence) -> Sentence:
+    """Minimalizuje nawiasy w zdaniu"""
+    assert isinstance(sentence, list)
 
-    if statement == []:
+    if sentence == []:
         return []
 
-    reduced = statement[:]
+    reduced = sentence[:]
 
     # Deleting brackets
     while reduced[0] == '(' and reduced[-1] == ')':
@@ -100,32 +100,34 @@ def cleaned(func):
 # Creators
 
 @Creator
-def empty_creator(statement: Sentence):
-    """Doesn't do nothing; Use when no Creator has been used to generate a tuple structure"""
-    return ((statement,),)
+def empty_creator(sentence: Sentence):
+    """Zwraca zdanie w strukturze krotek reprezentującą jedno rozgałęzienie z jednym zdaniem"""
+    return ((sentence,),)
 
 
 @cleaned
 @Creator
-def strip_around(statement: Sentence, border_type: str, split: bool, precedence: dict[str, int]) -> tuple[tuple[Sentence]]:
-    """Splits the sentence on the given string (only when all brackets yet are closed)
+def strip_around(sentence: Sentence, border_type: str, split: bool, precedence: dict[str, int]) -> tuple[tuple[Sentence]]:
+    """Dzieli zdanie wokół głównego spójnika, jeśli spójnikiem jest `border_type`
 
-    :param statement: Sentence to split
-    :type statement: Sentence
-    :param border_type: type of the object around which the object should be split
+    :param sentence: zdanie do podziału
+    :type sentence: Sentence
+    :param border_type: typ spójnika, wokół którego dzielone będzie zdanie
     :type border_type: str
-    :param split: True for creation of new branches
+    :param split: Czy tworzyć nowe gałęzie?
     :type split: bool
-    :return: Tuple of generated branch additions
+    :param precedence: Kolejność wykonywania działań
+    :type precedence: dict[str, int]
+    :return: Struktura krotek
     :rtype: tuple[tuple[Sentence]]
     """
-    if not statement:
+    if not sentence:
         return None
     lvl = 0
     middle = None
     precedence_keys = precedence.keys()
     border_precedence = precedence.get(border_type, 0)
-    for i, s in enumerate(statement):
+    for i, s in enumerate(sentence):
         if s == '(':
             lvl += 1
         elif s == ')':
@@ -142,87 +144,89 @@ def strip_around(statement: Sentence, border_type: str, split: bool, precedence:
     if middle is None:
         return None
     elif split:
-        return ((statement[:middle],), (statement[middle+1:],))
+        return ((sentence[:middle],), (sentence[middle+1:],))
     else:
-        return ((statement[:middle], statement[middle+1:]),)
+        return ((sentence[:middle], sentence[middle+1:]),)
 
 # Modifiers
 
 @cleaned
 @Modifier
 # TODO: Needs optimalization
-def reduce_prefix(statement: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
-    """Deletes a prefix if it closes the rest of the sentence
+def reduce_prefix(sentence: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
+    """Usuwa prefiksy ze zdań
 
-    :param statement: Modified sentence
-    :type statement: Sentence
-    :param prefix_type: Type of the prefix (`x` in `x_y`)
+    :param sentence: Zdanie
+    :type sentence: Sentence
+    :param prefix_type: Typ zdania
     :type prefix_type: str
-    :param prefixes: Prefixes used in this Formal system
+    :param prefixes: prefiksy występujące w systemie
     :type prefixes: tuple[str]
-    :raises Exception: After bracket reduction the statement_no_prefix gained a bracket
-    :return: Modified sentence
+    :raises Exception: [description]
+    :return: Zdanie
     :rtype: Sentence
     """
 
-    assert isinstance(statement, list)
+    assert isinstance(sentence, list)
 
-    if statement[0].startswith(prefix_type):
+    if sentence[0].startswith(prefix_type):
         start = 1
-        while any((statement[start].startswith(i) for i in prefixes)):
+        while any((sentence[start].startswith(i) for i in prefixes)):
             start += 1
-        statement_no_prefix = statement[start:]
+        sentence_no_prefix = sentence[start:]
 
-        if len(statement_no_prefix) == 1:
-            return reduce_brackets(statement[1:])
+        if len(sentence_no_prefix) == 1:
+            return reduce_brackets(sentence[1:])
         else:
-            reduction = reduce_brackets(statement_no_prefix)
-            if reduction.count("(") == statement_no_prefix.count("("):
+            reduction = reduce_brackets(sentence_no_prefix)
+            if reduction.count("(") == sentence_no_prefix.count("("):
                 return None
-            elif reduction.count("(") < statement_no_prefix.count("("):
-                return reduce_brackets(statement[1:])
+            elif reduction.count("(") < sentence_no_prefix.count("("):
+                return reduce_brackets(sentence[1:])
             else:
                 raise Exception(
-                    "After bracket reduction the statement_no_prefix gained a bracket")
+                    "After bracket reduction the sentence_no_prefix gained a bracket")
     else:
         return None
 
 
 @Modifier
-def add_prefix(statement: Sentence, prefix: str, lexem: str) -> Sentence:
-    """Adds a prefix to the whole sentence
+def add_prefix(sentence: Sentence, prefix: str, lexem: str) -> Sentence:
+    """Dodaje prefiks do zdania
 
-    :param statement: Sentence do modify
-    :type statement: Sentence
-    :param prefix: Prefix type to insert (`x` in `x_y`)
+    TODO: Ta funkcja wygląda jak mem
+
+    :param sentence: Zdanie do modyfikacji
+    :type sentence: Sentence
+    :param prefix: Typ prefiksu (`x` w `x_y`)
     :type prefix: str
-    :param lexem: Prefix lexem to insert  (`y` in `x_y`)
+    :param lexem: Leksem prefiksu  (`y` in `x_y`)
     :type lexem: str
-    :return: Modified sentence
+    :return: Zmieniony prefiks
     :rtype: Sentence
     """
 
-    if len(statement) == 1:
-        return [f"{prefix}_{lexem}", *statement]
+    if len(sentence) == 1:
+        return [f"{prefix}_{lexem}", *sentence]
     else:
-        return [f"{prefix}_{lexem}", '(', *statement, ')']
+        return [f"{prefix}_{lexem}", '(', *sentence, ')']
 
 
 def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
-    """Uses func on a part of the sentence
+    """Wykonuje funkcję na pewnej części zdania (części oddzielone są `split_type`)
     Ex.:
               onpart(s, sep*, 1, f)
     x0;x1;x3 ----------------------> x0;f(x1);x2
 
-    *in the Basic Lexicon sep is the type of ;
+    *w pluginie basic sep jest typem ;
 
-    :param sentence: sentence to use
+    :param sentence: Zdanie
     :type sentence: Sentence
-    :param split_type: type of the splitter
+    :param split_type: Typ dzielący od siebie części zdania
     :type split_type: str
-    :param sent_num: Number of the subsentence to use the rule on, starting from 0
+    :param sent_num: Numer podzdania do zastosowania funkcji
     :type sent_num: int
-    :param func: Function tu use on the subsentence
+    :param func: Używana funkcja
     :type func: callable
     """
 
@@ -257,9 +261,9 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
         return None
 
 def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
-    """Allows selective function application in the tuple structure
+    """Selektywne wykonywanie funkcji na elementach struktury krotek
 
-    Examples:
+    Przykłady:
 
 
     tuple_structure :   ((A, B))
@@ -280,13 +284,13 @@ def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]
     Result          :   ((A, func(B)), (C, func(D)))
 
 
-    :param tuple_structure: tuple of branch additions
+    :param tuple_structure: Struktura krotek
     :type tuple_structure: tuple[tuple[Sentence]]
-    :param selection: Selected sentences
+    :param selection: Filtr o kształcie struktury krotek
     :type selection: tuple[tuple[bool]]
-    :param func: Function to perform on the selected sentences
+    :param func: Funkcja stosowana na elementach, dla których filtr jest prawdziwy
     :type func: callable
-    :return: Modified tuple of branch additions
+    :return: Zmodyfikowana struktura krotek
     :rtype: tuple[tuple[Sentence]]
     """
 

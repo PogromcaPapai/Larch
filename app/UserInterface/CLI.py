@@ -366,7 +366,6 @@ command_dict = OrderedDict({
     'plugin list': {'comm': do_plug_list, 'args': [str], 'summary': ''},
     'plugin gen': {'comm': do_plug_gen, 'args': [str, str], 'summary': ''},
     'clear': {'comm': do_clear, 'args': [], 'summary': ''},
-    # 'kaja godek': {'comm': lambda x: "***** ***", 'args': [], 'summary': ''}
 })
 
 

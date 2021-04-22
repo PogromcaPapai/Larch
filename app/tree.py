@@ -1,4 +1,5 @@
 from __future__ import annotations
+from abc import abstractclassmethod
 
 import typing as tp
 import json, random
@@ -101,7 +102,7 @@ class ProofNode(ProofElement, NodeMixin):
     
 
     def gen_name(self, am=2) -> tuple[str]:
-        """Generates two possible names for the children of this node"""
+        """Zwraca `am` nazw dla gałęzi z czego jedną jest nazwa aktualnej"""
         branch_names = self.getbranchnames()
         possible = [i for i in colors if not i in branch_names]
         if len(possible)<am-1:
