@@ -1,5 +1,4 @@
 import typing as tp
-import close
 
 lexicon = None
 

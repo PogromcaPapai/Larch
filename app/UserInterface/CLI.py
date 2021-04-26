@@ -407,11 +407,7 @@ def get_rprompt(session):
         to_show.append(s+spaces*" ")
 
     # Foreground color calculating
-    if max_color(background) > THRESHOLD:
-        foreground = "#000000"
-    else:
-        foreground = "#FFFFFF"
-
+    foreground = "#000000" if max_color(background) > THRESHOLD else "#FFFFFF"
     new = " \n ".join(to_show)
     return ptk.HTML(f'\n<style fg="{foreground}" bg="{background}"> {escape(new)} </style>')
 

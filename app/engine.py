@@ -124,22 +124,22 @@ class Session(object):
         """
         # Socket name searching
         socket = self.sockets.get(socket_or_old, None)
-        if not socket:
+        if socket:
+            socket_name = socket_or_old
+
+        else:
             for i in self.config['chosen_plugins'].items():
                 if i[1] == socket_or_old:
                     socket_name = i[0]
                     socket = self.sockets[socket_name]
-            if not socket:
-                raise EngineError(f"Socket/plugin {socket_or_old} not found in the program")
-        else:
-            socket_name = socket_or_old
-
+        if not socket:
+            raise EngineError(f"Socket/plugin {socket_or_old} not found in the program")
         # Plugging
         try:
             socket.plug(new)
         except (pop.PluginError, pop.LackOfFunctionsError, pop.FunctionInterfaceError, pop.VersionError) as e:
             raise EngineError(str(e))
-            
+
         # Config editing
         self.config['chosen_plugins'][socket_name] = new
         self.write_config()
@@ -290,9 +290,9 @@ class Session(object):
         if not self.proof:
             raise EngineError(
                 "There is no proof started")
-        if not rule in self.acc('FormalSystem').get_rules().keys():
+        if rule not in self.acc('FormalSystem').get_rules().keys():
             raise EngineError("No such rule")
-        
+
         # Context checking
         context_info = self.acc('FormalSystem').get_needed_context(rule)
         if {i.variable for i in context_info} != set(context.keys()):
@@ -301,7 +301,7 @@ class Session(object):
         # Statement and used retrieving
         branch = self._get_node().getbranch()[0][:]
         used = self._get_node().gethistory()
-    
+
         # Rule execution
         try:
             out, used_extention = self.acc('FormalSystem').use_rule(rule, branch, used, context, auto)
@@ -309,22 +309,22 @@ class Session(object):
             raise EngineError(str(e))
 
         # Adding to used rules and returning
-        if out is not None:
-            old = self._get_node()
-            self._get_node().append(out)
-            children = old.children
-            
-            #TODO: poprawić, aby wszystkie dzieci otrzymywały historię
-            if not children:
-                assert len(used_extention)==1, "Wrong used_extention length"
-                self._get_node().History(used_extention[0])
-                return (old.name,)
-            else:
-                for j, s in zip(children, used_extention):
-                    j.History(*s)
-                return tuple([i.branch for i in children])
-        else:
+        if out is None:
             return None
+
+        old = self._get_node()
+        self._get_node().append(out)
+        children = old.children
+
+            #TODO: poprawić, aby wszystkie dzieci otrzymywały historię
+        if not children:
+            assert len(used_extention)==1, "Wrong used_extention length"
+            self._get_node().History(used_extention[0])
+            return (old.name,)
+        else:
+            for j, s in zip(children, used_extention):
+                j.History(*s)
+            return tuple(i.branch for i in children)
 
 
     @DealWithPOP
@@ -424,13 +424,10 @@ class Session(object):
             raise EngineError("There is no proof started")
 
         for node in self.proof.getleaves():
-            if node.branch == self.branch:
+            if node.branch == self.branch or node.closed:
                 continue
-            elif node.closed:
-                continue
-            else:
-                self.branch = node.branch
-                return f"Branch changed to {node.branch}"
+            self.branch = node.branch
+            return f"Branch changed to {node.branch}"
         raise EngineError("All branches are closed")
  
 

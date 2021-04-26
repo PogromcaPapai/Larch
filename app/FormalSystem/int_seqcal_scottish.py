@@ -26,9 +26,7 @@ def is_sequent(l, s) -> bool:
                 buffor = []
         else:
             buffor.append(i)
-    if buffor == s:
-        return True
-    return False
+    return buffor == s
 
 
 def pop_part(sentence: utils.Sentence, split_type: str, sent_num: int):
@@ -63,18 +61,16 @@ def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str
     """
     Łączy struktury krotek w jedną dodając do siebie zdania z `glue` między nimi
     """
-    if isinstance(left, tuple) and isinstance(left, tuple):
+    if isinstance(left, tuple) and isinstance(right, tuple):
         assert len(left) == len(right), "Tuples not of equal length"
-        end = []
-        for l, r in zip(left, right):
-            end.append(merge_tupstruct(l, r, glue))
+        end = [merge_tupstruct(l, r, glue) for l, r in zip(left, right)]
         return tuple(end)
-    elif isinstance(left, list) and isinstance(left, list):
+    elif isinstance(left, list) and isinstance(right, list):
         return left + [glue] + right
     else:
         # Bug reporting
-        l_correct = (isinstance(left, list) or isinstance(left, tuple))
-        r_correct = (isinstance(right, list) or isinstance(right, tuple))
+        l_correct = isinstance(left, (list, tuple))
+        r_correct = isinstance(right, (list, tuple))
         if l_correct and r_correct:
             raise AssertionError("Tuples not of equal depth")
         else:
@@ -105,13 +101,12 @@ def stoup_add(tree: tuple[tuple[utils.Sentence]], rule_name: str, new: bool = Fa
     elif rule_name.endswith('left_and'):
         if new:
             return tree
-        else:
-            ntree = ["^"]+tree[0][0]
-            for i, seq in enumerate(ntree[0][0]):
-                if seq.startswith("sep_"):
-                    break
-            ntree.insert(i+1, "^")
-            return ((ntree,),)
+        ntree = ["^"]+tree[0][0]
+        for i, seq in enumerate(ntree[0][0]):
+            if seq.startswith("sep_"):
+                break
+        ntree.insert(i+1, "^")
+        return ((ntree,),)
         
 
 
@@ -208,12 +203,12 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, used: 
     """
     if not right or side not in ('l', 'r','find'):
         return (None, None)
-    
+
     split = utils.strip_around(right, 'or', False, PRECEDENCE)
     if split is None or split[0] is None:
         return (None, None)
     left_split, right_split = split[0]
-    
+
 
     if side=='l':
         ret = left_split
@@ -230,9 +225,8 @@ def rule_right_or(left: utils.Sentence, right: utils.Sentence, side: str, used: 
 
     if ret in used:
         raise utils.FormalSystemError("Operation prohibited by loop detection algorithm")
-    else:
-        pop_part(right, 'sep', 0)
-        return ((left,),), ((debrac(ret),),)
+    pop_part(right, 'sep', 0)
+    return ((left,),), ((debrac(ret),),)
 
 
 @stoupManager
@@ -394,7 +388,7 @@ RULES = {
 
 def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     statement = utils.reduce_brackets(statement)
-    if not 'turnstile_=>' in statement:
+    if 'turnstile_=>' not in statement:
         return ['turnstile_=>']+statement
     else:
         return statement
@@ -409,9 +403,9 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
     empty = len(right)==1
 
     # Left part verification
-    if len(left)==0:
+    if not left:
         return None
-    for i in range(0, seps):
+    for i in range(seps):
         f = pop_part(left[:], 'sep', i)
 
         # F, ... => ...
@@ -436,10 +430,10 @@ def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
 
 def get_rules() -> dict[str, str]:
     """Returns the names and documentation of the rules"""
-    rule_dict = dict()
-    for name, rule in RULES.items():
-        rule_dict[name] = "\n".join((rule.symbolic, rule.docs))
-    return rule_dict
+    return {
+        name: "\n".join((rule.symbolic, rule.docs))
+        for name, rule in RULES.items()
+    }
 
 
 def get_needed_context(rule_name: str) -> tuple[utils.ContextDef]:
