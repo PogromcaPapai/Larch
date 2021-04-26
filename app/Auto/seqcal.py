@@ -56,12 +56,12 @@ def find_rule(sen: utils.Sentence) -> tp.Union[list[str], None]:
 
 def solve(delegate: callable, branch: list[utils.Sentence]) -> tuple[tp.Union[str, None], tp.Union[tuple[str], None]]:
     found_rules = find_rule(branch[-1])
-    
+
     if found_rules is None:
         return None, None
 
     found_rules.sort(key=lambda x: RULES.index(" ".join(x[:2])))
-    
+
     out = None
     i = 0
     loops = 0
@@ -70,7 +70,7 @@ def solve(delegate: callable, branch: list[utils.Sentence]) -> tuple[tp.Union[st
         i+=1
 
         # Context compilation
-        context = dict()
+        context = {}
         if rule[0]=='left':
             context['partID'] = rule[2]
         elif rule[1]=='or':
@@ -80,18 +80,20 @@ def solve(delegate: callable, branch: list[utils.Sentence]) -> tuple[tp.Union[st
         try:
             out = delegate(" ".join(rule[:2]), context, True)
         except Exception as e:
-            if str(e) in ("Operation prohibited by loop detection algorithm", "There is a sequent that is prioritized", "Rule can't be performed on prioritized sequents"):
-                loops += 1
-                out = None
-            else:
+            if str(e) not in (
+                "Operation prohibited by loop detection algorithm",
+                "There is a sequent that is prioritized",
+                "Rule can't be performed on prioritized sequents",
+            ):
                 raise e
 
+            loops += 1
+            out = None
     if out:
         return f"Performed {' '.join((str(i) for i in rule))}", out
-    else:
-        if loops==len(found_rules):
-            return "Branch always loops", None
-        return None, None
+    if loops==len(found_rules):
+        return "Branch always loops", None
+    return None, None
 
 
 def compatible() -> tuple[str]:

@@ -120,10 +120,10 @@ def check_syntax(sentence: utils.Sentence) -> tp.Union[str, None]:
 
 def get_rules() -> dict[str, str]:
     """Returns the names and documentation of the rules"""
-    rule_dict = dict()
-    for name, rule in RULES.items():
-        rule_dict[name] = "\n".join((rule.symbolic, rule.docs))
-    return rule_dict
+    return {
+        name: "\n".join((rule.symbolic, rule.docs))
+        for name, rule in RULES.items()
+    }
 
 
 def get_used_types() -> tuple[str]:
@@ -162,10 +162,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
     # Rule usage
     fin = rule.func(tokenized_statement)
     if fin:
-        if rule.reusable:
-            u = [[0]]
-        else:
-            u = [[tuple(tokenized_statement)]]
+        u = [[0]] if rule.reusable else [[tuple(tokenized_statement)]]
         return fin, len(fin)*u
     else:
         return None, None

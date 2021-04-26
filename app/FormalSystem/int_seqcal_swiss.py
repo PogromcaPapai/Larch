@@ -25,9 +25,7 @@ def is_sequent(l, s) -> bool:
                 buffor = []
         else:
             buffor.append(i)
-    if buffor == s:
-        return True
-    return False
+    return buffor == s
 
 
 def get_part(sentence: utils.Sentence, split_type: str, sent_num: int):
@@ -64,18 +62,16 @@ def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str
     """
     Merges two tuple structures into one
     """
-    if isinstance(left, tuple) and isinstance(left, tuple):
+    if isinstance(left, tuple):
         assert len(left) == len(right), "Tuples not of equal length"
-        end = []
-        for l, r in zip(left, right):
-            end.append(merge_tupstruct(l, r, glue))
+        end = [merge_tupstruct(l, r, glue) for l, r in zip(left, right)]
         return tuple(end)
-    elif isinstance(left, list) and isinstance(left, list):
+    elif isinstance(left, list):
         return left + [glue] + right
     else:
         # Bug reporting
-        l_correct = (isinstance(left, list) or isinstance(left, tuple))
-        r_correct = (isinstance(right, list) or isinstance(right, tuple))
+        l_correct = isinstance(left, (list, tuple))
+        r_correct = isinstance(right, (list, tuple))
         if l_correct and r_correct:
             raise AssertionError("Tuples not of equal depth")
         else:
@@ -322,7 +318,7 @@ RULES = {
 
 def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     statement = utils.reduce_brackets(statement)
-    if not 'turnstile_=>' in statement:
+    if 'turnstile_=>' not in statement:
         return ['turnstile_=>']+statement
     else:
         return statement
@@ -338,7 +334,7 @@ def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.
     # Left part verification
     if len(left)==0:
         return None
-    for i in range(0, seps):
+    for i in range(seps):
         f = get_part(left[:], 'sep', i)
 
         # F, ... => ...
@@ -363,10 +359,10 @@ def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
 
 def get_rules() -> dict[str, str]:
     """Returns the names and documentation of the rules"""
-    rule_dict = dict()
-    for name, rule in RULES.items():
-        rule_dict[name] = "\n".join((rule.symbolic, rule.docs))
-    return rule_dict
+    return {
+        name: "\n".join((rule.symbolic, rule.docs))
+        for name, rule in RULES.items()
+    }
 
 
 def get_needed_context(rule_name: str) -> tuple[utils.ContextDef]:
@@ -401,7 +397,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
 
     start = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)
     start_left, start_right = start[0]
-    
+
     # Check sequent number
     if context.get('partID', -1) > sum(i.startswith('sep') for i in start_left)+1:
         raise utils.FormalSystemError("Sequent number is too big")
@@ -428,7 +424,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: set[utils.Sentence],
     left, right = rule.func(start_left[:], start_right[:], *context.values())
 
     # Outcome return
-    if not (left is None or right is None):
+    if left is not None and right is not None:
         # History length multiplication
         if not history:
             history = [[0]]*len(left)

@@ -29,8 +29,7 @@ def Modifier(func):
     """Funkcje z tym dekoratorem mogą tylko iterować po istniejących strukturach krotek"""
     def wrapper(sentence, *args, **kwargs):
         if isinstance(sentence, tuple):
-            calculated = tuple([wrapper(i, *args, **kwargs)
-                                for i in sentence])
+            calculated = tuple(wrapper(i, *args, **kwargs) for i in sentence)
             if any((i is None for i in calculated)):
                 return None
             else:
@@ -71,8 +70,7 @@ def reduce_brackets(sentence: Sentence) -> Sentence:
         else:
             continue
         delta_left = opened_left-opened_right
-        if min_left > delta_left:
-            min_left = delta_left
+        min_left = min(min_left, delta_left)
 
     right = opened_left-opened_right-min_left
     return -min_left*["("] + reduced + right*[")"]
@@ -248,14 +246,22 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
         out = func(sentence[start_split+(split_count!=0):])
     else:
         out = func(sentence[start_split+(split_count!=0):end_split])
-    
+
     if isinstance(out, list):
         return sentence[:start_split+(split_count!=0)] + out + sentence[end_split:]
     elif isinstance(out, tuple):
-        l = list()
+        l = []
         for branch in out:
             assert isinstance(branch, tuple)
-            l.append(tuple([sentence[:start_split+(split_count!=0)] + i + sentence[end_split:] for i in branch]))
+            l.append(
+                tuple(
+                    sentence[: start_split + (split_count != 0)]
+                    + i
+                    + sentence[end_split:]
+                    for i in branch
+                )
+            )
+
         return tuple(l)
     else:
         return None

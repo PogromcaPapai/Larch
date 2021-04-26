@@ -36,10 +36,12 @@ def write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> list[str]:
     """
     Zwraca drzewiastą reprezentację drzewa
     """
-    strs = []
-    for pre, fill, node in RenderTree(get_nodes(tree.sentences, lexem_parser, tree.children)[0]):
-        strs.append(f"{pre}{node.name}".rstrip('\n'))
-    return strs
+    return [
+        f"{pre}{node.name}".rstrip('\n')
+        for pre, fill, node in RenderTree(
+            get_nodes(tree.sentences, lexem_parser, tree.children)[0]
+        )
+    ]
 
 
 def get_nodes(sentences: list[str], lexem_parser: callable, children: list[utils.PrintedTree]) -> list[Node]: 

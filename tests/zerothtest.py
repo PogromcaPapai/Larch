@@ -35,7 +35,7 @@ def new_notation(func):
         elif isinstance(ret, tuple):
             if ret == ((),):
                 return ()
-            return tuple([tuple([join_to_string(i) for i in j]) for j in ret])
+            return tuple(tuple(join_to_string(i) for i in j) for j in ret)
         else:
             return ret
     return wrapped

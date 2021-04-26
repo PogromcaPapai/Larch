@@ -37,8 +37,6 @@ def _write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> tuple[list[s
     :rtype: list[str], int
     """
     DELIMITER = '  \u2016  '
-    delilen = len(DELIMITER)
-
     # Get width of current node's sentences
     parsed = [get_readable(s, lexem_parser) for s in tree.sentences]
     width = max((len(s) for s in parsed))
@@ -47,16 +45,18 @@ def _write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> tuple[list[s
     if tree.children:
         children = []
         widths = []
-        
+
         # Getting children
         for i in tree.children:
             s, w = _write_tree(i, lexem_parser)
             children.append(s)
             widths.append(w)
-        
+
         # Children length correction
         sen_am = max((len(s) for s in children))
         children = [i+['']*(sen_am - len(i)) for i in children]
+
+        delilen = len(DELIMITER)
 
         # Children formating
         if sum(widths)+delilen*len(widths)-delilen >= width:
@@ -72,7 +72,7 @@ def _write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> tuple[list[s
             append = [tree.closer]
         else:
             append = [tree.closer+" "*(width - len(tree.closer))]
-    
+
     # Align the sentences
     sentences = utils.align(parsed, width)
 
