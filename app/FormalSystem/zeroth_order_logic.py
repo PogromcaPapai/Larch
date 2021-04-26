@@ -81,7 +81,7 @@ def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     return statement
 
 
-def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
+def check_closure(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
     """Checks for closing sentences"""
     for num1, statement_1 in enumerate(branch[:-1]):
         for num2, statement_2 in enumerate(branch[-2:]):

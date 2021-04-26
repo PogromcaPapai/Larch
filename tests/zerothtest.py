@@ -267,10 +267,10 @@ class Test_double_neg(test.TestCase):
 
 
 
-class Test_check_contradict(test.TestCase):
+class Test_check_closure(test.TestCase):
 
     def setUp(self):
-        self.func = new_notation(zol.check_contradict)
+        self.func = new_notation(zol.check_closure)
 
     def test_true_basic(self):
         self.assertIs(self.func(

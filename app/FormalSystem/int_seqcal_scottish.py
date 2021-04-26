@@ -394,7 +394,7 @@ def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
         return statement
 
 
-def check_contradict(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
+def check_closure(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Union[None, tuple[int, str, str]]:
     left, right = utils.strip_around(branch[-1], "turnstile", False, PRECEDENCE)[0]
     left = [i for i in left if i != "^"]
     seps = sum((i.startswith('sep_') for i in left), 1)

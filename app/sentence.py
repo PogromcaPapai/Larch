@@ -47,7 +47,7 @@ class Sentence(list):
 
         for typ, lex in zip(self.getTypes(), self):
             if typ in ('indvar', 'constant', 'predicate', 'function', 'sentvar'):
-                added = translator.get(lex, None)
+                added = translator.get(lex)
 
                 if added is None:
                     added = f"{typ}_{av_letters[typ].pop(0)}"

@@ -13,13 +13,13 @@ VERSION = '0.0.1'
 
 
 def get_readable(sentence: utils.Sentence, lexem_parser: callable) -> str:
-    """Returns a readable version of the sentence
+    """Zwraca zdanie w czytelnej formie
 
-    :param sentence: Transcribed sentence
+    :param sentence: Zdanie do transformacji
     :type sentence: Sentence
-    :param lexem_parser: Transforms tokens into lexems to use (get_lexem for example)
+    :param lexem_parser: Funkcja jednoargumentowa konwertująca tokeny na leksemy
     :type lexem_parser: callable
-    :return: Transcribed string
+    :return: Przepisane zdanie
     :rtype: str
     """
     assert isinstance(sentence, list)
@@ -34,12 +34,21 @@ def get_readable(sentence: utils.Sentence, lexem_parser: callable) -> str:
 
 def write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> list[str]:
     """
-    Zwraca drzewiastą reprezentację drzewa
+    Zwraca drzewiastą reprezentację dowodu
+
+    :param tree: Drzewo do konwersji
+    :type tree: utils.PrintedTree
+    :param lexem_parser: Funkcja jednoargumentowa konwertująca tokeny na leksemy
+    :type lexem_parser: callable
+    :return: Dowód w liście
+    :rtype: list[str]
     """
-    strs = []
-    for pre, fill, node in RenderTree(get_nodes(tree.sentences, lexem_parser, tree.children)[0]):
-        strs.append(f"{pre}{node.name}".rstrip('\n'))
-    return strs
+    return [
+        f"{pre}{node.name}".rstrip('\n')
+        for pre, _, node in RenderTree(
+            get_nodes(tree.sentences, lexem_parser, tree.children)[0]
+        )
+    ]
 
 
 def get_nodes(sentences: list[str], lexem_parser: callable, children: list[utils.PrintedTree]) -> list[Node]: 
