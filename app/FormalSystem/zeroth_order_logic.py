@@ -1,3 +1,6 @@
+"""
+Tabele analityczne KRZ w stylizacji Smullyana bez formuł sygnowanych.
+"""
 import typing as tp
 import FormalSystem as utils
 
@@ -20,14 +23,14 @@ def red_neg(x):
 RULES = {
     'true and': utils.Rule(
         symbolic="A and B / A; B",
-        docs="Needs sentence ID",
+        docs="Rozkładanie prawdziwej koniunkcji. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.strip_around(x, 'and', False, PRECEDENCE),
         context = None,
         reusable=True
     ),
     'false and': utils.Rule(
         symbolic="~(A and B) / ~A | ~B",
-        docs="Needs sentence ID",
+        docs="Rozkładanie fałszywej koniunkcji. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.add_prefix(utils.strip_around(
             red_neg(x), 'and', True, PRECEDENCE), 'not', '~'),
         context = None,
@@ -35,7 +38,7 @@ RULES = {
     ),
     'false or': utils.Rule(
         symbolic="~(A or B) / ~A; ~B",
-        docs="Needs sentence ID",
+        docs="Rozkładanie fałszywej alternatywy. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.add_prefix(utils.strip_around(
             red_neg(x), 'or', False, PRECEDENCE), 'not', '~'),
         context = None,
@@ -43,28 +46,28 @@ RULES = {
     ),
     'true or': utils.Rule(
         symbolic="(A or B) / A | B",
-        docs="Needs sentence ID",
+        docs="Rozkładanie prawdziwej alternatywy. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.strip_around(x, 'or', True, PRECEDENCE),
         context = None,
         reusable=False
     ),
     'false imp': utils.Rule(
         symbolic="~(A -> B) / A; ~B",
-        docs="Needs sentence ID",
+        docs="Rozkładanie fałszywej implikacji. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.select(utils.strip_around(red_neg(x),'imp', False, PRECEDENCE), ((False, True),), lambda y: utils.add_prefix(y, 'not', '~')),
         context = None,
         reusable=True
     ),
     'true imp': utils.Rule(
         symbolic="(A -> B) / ~A | B",
-        docs="Needs sentence ID",
+        docs="Rozkładanie prawdziwej implikacji. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.select(utils.strip_around(x, 'imp', True, PRECEDENCE), ((True,), (False,)), lambda y: utils.add_prefix(y, 'not', '~')),
         context = None,
         reusable=False
     ),
     'double not': utils.Rule(
         symbolic="~~A / A",
-        docs="Needs sentence ID",
+        docs="Usuwanie podwójnej negacji. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.reduce_prefix(
             utils.reduce_prefix(utils.empty_creator(x), 'not', ('not')), 'not', ('not')),
         context = None,
