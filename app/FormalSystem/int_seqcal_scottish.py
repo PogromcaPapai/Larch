@@ -1,3 +1,12 @@
+"""
+Rachunek sekwentów z mechanizmem kontroli pętli oraz priorytetyzowaniem formuł opracowany na podstawie: 
+Howe, J. M. (1997, May). Two loop detection mechanisms: a comparison. In International Conference on Automated Reasoning with Analytic Tableaux and Related Methods (pp. 188-200). Springer, Berlin, Heidelberg.
+
+Działa silniej od int_seqcal_swiss, dowody mogą czasem się nie udać
+
+Implementacja opisana w:
+https://github.com/PogromcaPapai/Larch/blob/24e1391c183d08842aa0cf7df971eeb01a1a9885/media/int_seqcal%20-%20implementacja.pdf
+"""
 import typing as tp
 import FormalSystem as utils
 
@@ -251,7 +260,7 @@ def rule_left_weak(left: utils.Sentence, right: utils.Sentence, num: int):
 RULES = {
     'left and': utils.Rule(
         symbolic="A&B, ... => ... // A, B, ... => ...",
-        docs="",
+        docs="Rozkładanie koniunkcji po lewej stronie sekwentu",
         func=rule_left_and,
         reusable=None, # Not needed
         context=[utils.ContextDef(
@@ -262,8 +271,8 @@ RULES = {
         )]
     ),
     'left or': utils.Rule(
-        symbolic="",
-        docs="",
+        symbolic="A v B, ... => ... // A, B, ... => ...",
+        docs="Rozkładanie alternatywy po lewej stronie sekwentu",
         func=rule_left_or,
         reusable=None, # Not needed
         context=[utils.ContextDef(
@@ -274,15 +283,15 @@ RULES = {
         )]
     ),
     'right and': utils.Rule(
-        symbolic="",
-        docs="",
+        symbolic="... => A & B // ... => A | ... => B",
+        docs="Rozkładanie koniunkcji po prawej stronie sekwentu",
         func=rule_right_and,
         reusable=None, # Not needed
         context=[]
     ),
     'right or': utils.Rule(
-        symbolic="",
-        docs="",
+        symbolic="... => ... v ... // ... => ...",
+        docs="Rozkładanie alternatywy po prawej stronie sekwentu",
         func=rule_right_or,
         reusable=None, # Not needed
         context=[
@@ -294,8 +303,8 @@ RULES = {
         )]
     ),
     'left imp': utils.Rule(
-        symbolic="",
-        docs="",
+        symbolic="..., A -> B => ... // ..., A => B | ..., B => ...",
+        docs="Rozkładanie implikacji po lewej stronie sekwentu",
         func=rule_left_imp,
         reusable=None, # Not needed
         context=[utils.ContextDef(
@@ -306,15 +315,15 @@ RULES = {
         )]
     ),
     'right imp': utils.Rule(
-        symbolic="",
-        docs="",
+        symbolic="... => A -> B // A, ... => B",
+        docs="Rozkładanie implikacji po prawej stronie sekwentu",
         func=rule_right_imp,
         reusable=None, # Not needed
         context=[]
     ),
     'left weak': utils.Rule(
-        symbolic="",
-        docs="",
+        symbolic="A, A, ... => ... // A, ... => ...",
+        docs="Reguła osłabiania lewej strony",
         func=rule_left_weak,
         reusable=None, # Not needed
         context=[utils.ContextDef(
@@ -325,8 +334,8 @@ RULES = {
         )]
     ),
     'left strong': utils.Rule(
-        symbolic="",
-        docs="",
+        symbolic="A, ... => ... // A, A, ... => ...",
+        docs="Reguła wzmacniania dla lewej strony",
         func=rule_left_strong,
         reusable=None, # Not needed
         context=[utils.ContextDef(
