@@ -1,3 +1,6 @@
+"""
+Podstawowy słownik programu, niedługo dojdzie do modyfikacji tego socketu, więc nie opisywałem.
+"""
 import typing as tp
 from collections import namedtuple
 from string import ascii_letters as alphabet
@@ -59,9 +62,9 @@ full_lexicon['types'] = reduce(lambda x, y: x | y, ((
 
 def group_by_value(l: list[tuple[str, str]]) -> dict[str, list[str]]:
     """When given a list of (key, value) returns a dictionary, where keys are grouped by values"""
-    allfound = dict()
+    allfound = {}
     for i in l:
-        if i[0] in allfound.keys():
+        if i[0] in allfound:
             allfound[i[0]].append(i[1])
         else:
             allfound[i[0]] = [i[1]]
@@ -119,11 +122,11 @@ def simplify_lexicon(used_tokens: frozenset[str], defined: frozenset[tuple[str, 
     # Check for duplicates
     dup_key = [i for i in group_by_value(
         filtered_keywords).items() if len(i[1]) > 1]
-    if len(dup_key) > 0:
+    if dup_key:
         raise utils.MultipleTypesError(dup_key)
     dup_var = [i for i in group_by_value(
         filtered_keywords).items() if len(i[1]) > 1]
-    if len(dup_var) > 0:
+    if dup_var:
         raise utils.MultipleTypesError(dup_var)
 
     # Prepare data

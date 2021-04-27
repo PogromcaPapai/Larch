@@ -295,7 +295,7 @@ def do_use(session: engine.Session, command) -> str:
 
 def do_contra(session, branch: str):
     """Detects contradictions and handles them by closing their branches"""
-    cont = session.deal_contradiction(branch)
+    cont = session.deal_closure(branch)
     if cont:
         return cont
     else:

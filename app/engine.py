@@ -228,7 +228,7 @@ class Session(object):
 
     @EngineLog
     @DealWithPOP
-    def deal_contradiction(self, branch_name: str) -> tp.Union[None, str]:
+    def deal_closure(self, branch_name: str) -> tp.Union[None, str]:
         """Wywołuje proces sprawdzenia zamykalności gałęzi oraz (jeśli można) zamyka ją; Zwraca informacje o podjętych akcjach"""
         # Tests
         if not self.proof:
@@ -351,7 +351,7 @@ class Session(object):
                     black.add(leaves[0])
                     continue
                 for branch in branches:
-                    o = self.deal_contradiction(branch)
+                    o = self.deal_closure(branch)
                     if o:
                         out.append(o)
             else:

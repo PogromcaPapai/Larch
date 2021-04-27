@@ -1,6 +1,7 @@
 from collections import namedtuple
 import typing as tp
 import close
+from tree_helpers import History
 
 Sentence = tp.NewType("Sentence", list[str])
 
@@ -29,8 +30,7 @@ def Modifier(func):
     """Funkcje z tym dekoratorem mogą tylko iterować po istniejących strukturach krotek"""
     def wrapper(sentence, *args, **kwargs):
         if isinstance(sentence, tuple):
-            calculated = tuple([wrapper(i, *args, **kwargs)
-                                for i in sentence])
+            calculated = tuple([wrapper(i, *args, **kwargs) for i in sentence])
             if any((i is None for i in calculated)):
                 return None
             else:
@@ -83,7 +83,7 @@ def quick_bracket_check(reduced: Sentence) -> bool:
 
 
 def cleaned(func):
-    """Cleans the result of a function"""
+    """Dekorator automatycznie czyści wynik działania funkcji, aktualnie jest to redukcja nawiasów"""
     def wrapper(*args, **kwargs):
         returned = func(*args, **kwargs)
         returned = reduce_brackets(returned)
@@ -94,6 +94,54 @@ def cleaned(func):
 
 
 # Useful functions for creating rules
+
+# Sentence manipulation
+
+def pop_part(sentence: utils.Sentence, split_type: str, sent_num: int):
+    """
+    Zwraca n-te podzdanie (podział według obiektów split_type) usuwając je ze zdania
+    """
+    split_count = 0
+    start_split = 0
+    for s in sentence:
+        if s.startswith(f"{split_type}_"):
+            split_count += 1
+        if split_count == sent_num:
+            break
+        start_split += 1
+
+    if len(sentence) <= start_split or split_count<sent_num:
+        raise IndexError("sent_num is too big")
+
+    part = []
+    if split_count>0:
+        sentence.pop(start_split)
+    
+    while start_split<len(sentence) and not sentence[start_split].startswith(f"{split_type}_"):
+        part.append(sentence.pop(start_split))
+
+    if len(sentence)>0 and split_count == 0:
+        sentence.pop(start_split)
+    return part
+
+# Tuple structure manipulation
+
+def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str):
+    """Łączy struktury krotek w jedną dodając do siebie zdania z `glue` między nimi"""
+    if isinstance(left, tuple) and isinstance(right, tuple):
+        assert len(left) == len(right), "Tuples not of equal length"
+        end = [merge_tupstruct(l, r, glue) for l, r in zip(left, right)]
+        return tuple(end)
+    elif isinstance(left, list) and isinstance(right, list):
+        return left + [glue] + right
+    else:
+        # Bug reporting
+        l_correct = isinstance(left, (list, tuple))
+        r_correct = isinstance(right, (list, tuple))
+        if l_correct and r_correct:
+            raise AssertionError("Tuples not of equal depth")
+        else:
+            raise AssertionError((l_correct*"left")+(l_correct*r_correct *' and ')+(r_correct*"right") + "tuple is messed up")
 
 
 # Creators
@@ -192,8 +240,6 @@ def reduce_prefix(sentence: Sentence, prefix_type: str, prefixes: tuple[str]) ->
 @Modifier
 def add_prefix(sentence: Sentence, prefix: str, lexem: str) -> Sentence:
     """Dodaje prefiks do zdania
-
-    TODO: Ta funkcja wygląda jak mem
 
     :param sentence: Zdanie do modyfikacji
     :type sentence: Sentence
