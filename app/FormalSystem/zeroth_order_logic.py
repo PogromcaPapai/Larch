@@ -101,8 +101,6 @@ def check_closure(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Uni
     return None
                 
         
-
-
 def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
     """Sprawdza poprawność zapisu tokenizowanego zdania, zwraca informacje o błędach w formule"""
     return None
