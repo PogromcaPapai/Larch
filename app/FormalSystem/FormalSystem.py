@@ -30,11 +30,11 @@ def Modifier(func):
     """Funkcje z tym dekoratorem mogą tylko iterować po istniejących strukturach krotek"""
     def wrapper(sentence, *args, **kwargs):
         if isinstance(sentence, tuple):
-            calculated = tuple([wrapper(i, *args, **kwargs) for i in sentence])
+            calculated = [wrapper(i, *args, **kwargs) for i in sentence]
             if any((i is None for i in calculated)):
                 return None
             else:
-                return calculated
+                return tuple(calculated)
         elif sentence is None:
             return None
         else:
@@ -97,7 +97,7 @@ def cleaned(func):
 
 # Sentence manipulation
 
-def pop_part(sentence: utils.Sentence, split_type: str, sent_num: int):
+def pop_part(sentence: Sentence, split_type: str, sent_num: int):
     """
     Zwraca n-te podzdanie (podział według obiektów split_type) usuwając je ze zdania
     """
@@ -124,7 +124,9 @@ def pop_part(sentence: utils.Sentence, split_type: str, sent_num: int):
         sentence.pop(start_split)
     return part
 
+
 # Tuple structure manipulation
+
 
 def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str):
     """Łączy struktury krotek w jedną dodając do siebie zdania z `glue` między nimi"""
@@ -144,7 +146,68 @@ def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str
             raise AssertionError((l_correct*"left")+(l_correct*r_correct *' and ')+(r_correct*"right") + "tuple is messed up")
 
 
+def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
+    """Selektywne wykonywanie funkcji na elementach struktury krotek
+
+    Przykłady:
+
+
+    tuple_structure :   ((A, B))
+    selection       :   ((True, False))
+    ___________________________________
+    Result          :   ((func(A), B))
+
+
+    tuple_structure :   ((A, B), (C, D))
+    selection       :   ((False, False), (True, False))
+    ___________________________________
+    Result          :   ((A, B), (func(C), D))
+
+
+    tuple_structure :   ((A, B), (C, D))
+    selection       :   ((False, True), (False, True))
+    ___________________________________
+    Result          :   ((A, func(B)), (C, func(D)))
+
+
+    :param tuple_structure: Struktura krotek
+    :type tuple_structure: tuple[tuple[Sentence]]
+    :param selection: Filtr o kształcie struktury krotek
+    :type selection: tuple[tuple[bool]]
+    :param func: Funkcja stosowana na elementach, dla których filtr jest prawdziwy
+    :type func: callable
+    :return: Zmodyfikowana struktura krotek
+    :rtype: tuple[tuple[Sentence]]
+    """
+
+    # Tests
+    if not tuple_structure:
+        return None
+    assert len(tuple_structure) == len(selection)
+    assert all((len(tuple_structure[i]) == len(
+        selection[i]) for i in range(len(selection))))
+
+    # Execution
+    return _select(tuple_structure, selection, func)
+
+
+def _select(filtered, selection, func: callable) -> tuple[tuple[Sentence]]:
+    """Recursion used in `select`; DO NOT USE"""
+    after = []
+
+    for s, use in zip(filtered, selection):
+        if isinstance(use, bool):
+            if use:
+                after.append(func(s))
+            else:
+                after.append(s)
+        else:
+            after.append(_select(s, use, func))
+    return tuple(after)
+
+
 # Creators
+
 
 @Creator
 def empty_creator(sentence: Sentence):
@@ -195,7 +258,9 @@ def strip_around(sentence: Sentence, border_type: str, split: bool, precedence: 
     else:
         return ((sentence[:middle], sentence[middle+1:]),)
 
+
 # Modifiers
+
 
 @cleaned
 @Modifier
@@ -257,6 +322,7 @@ def add_prefix(sentence: Sentence, prefix: str, lexem: str) -> Sentence:
         return [f"{prefix}_{lexem}", '(', *sentence, ')']
 
 
+@Modifier
 def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
     """Wykonuje funkcję na pewnej części zdania (części oddzielone są `split_type`)
     Ex.:
@@ -312,62 +378,3 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
         return tuple(l)
     else:
         return None
-
-def select(tuple_structure: tuple[tuple[Sentence]], selection: tuple[tuple[bool]], func: callable) -> tuple[tuple[Sentence]]:
-    """Selektywne wykonywanie funkcji na elementach struktury krotek
-
-    Przykłady:
-
-
-    tuple_structure :   ((A, B))
-    selection       :   ((True, False))
-    ___________________________________
-    Result          :   ((func(A), B))
-
-
-    tuple_structure :   ((A, B), (C, D))
-    selection       :   ((False, False), (True, False))
-    ___________________________________
-    Result          :   ((A, B), (func(C), D))
-
-
-    tuple_structure :   ((A, B), (C, D))
-    selection       :   ((False, True), (False, True))
-    ___________________________________
-    Result          :   ((A, func(B)), (C, func(D)))
-
-
-    :param tuple_structure: Struktura krotek
-    :type tuple_structure: tuple[tuple[Sentence]]
-    :param selection: Filtr o kształcie struktury krotek
-    :type selection: tuple[tuple[bool]]
-    :param func: Funkcja stosowana na elementach, dla których filtr jest prawdziwy
-    :type func: callable
-    :return: Zmodyfikowana struktura krotek
-    :rtype: tuple[tuple[Sentence]]
-    """
-
-    # Tests
-    if not tuple_structure:
-        return None
-    assert len(tuple_structure) == len(selection)
-    assert all((len(tuple_structure[i]) == len(
-        selection[i]) for i in range(len(selection))))
-
-    # Execution
-    return _select(tuple_structure, selection, func)
-
-
-def _select(filtered, selection, func: callable) -> tuple[tuple[Sentence]]:
-    """Recursion used in `select`; DO NOT USE"""
-    after = []
-
-    for s, use in zip(filtered, selection):
-        if isinstance(use, bool):
-            if use:
-                after.append(func(s))
-            else:
-                after.append(s)
-        else:
-            after.append(_select(s, use, func))
-    return tuple(after)
