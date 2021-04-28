@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import logging as log
 import os
 import typing as tp
 
