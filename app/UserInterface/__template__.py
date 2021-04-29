@@ -1,3 +1,6 @@
+"""
+Tutaj umieść dokumentację swojego pluginu
+"""
 
 SOCKET = 'UserInterface'
 VERSION = '0.0.1'

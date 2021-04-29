@@ -1,3 +1,6 @@
+"""
+Tutaj umieść dokumentację swojego pluginu
+"""
 import typing as tp
 import Lexicon as utils
 
