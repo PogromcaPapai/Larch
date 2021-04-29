@@ -66,7 +66,7 @@ Bardzo przydatne jest dla nas dołączenie crash reportu, który możesz znaleź
 
 Projekt Larch został utworzony tak, aby umożliwić każdej chętnej osobie tworzenie autorskich metod dowodzenia, formatów wydruku, formatów zapisów, czy interfejsów. 
 
-Możesz skopiować wzór pluginu z pomocą komendy `plugin gen [nazwa gniazda] [nazwa pluginu]`. Znajdziesz w nim zestaw wzorów funkcji, które wymagane są od danego pluginu. Type hinting podpowie Ci, co dany plugin przyjmuje, a co zwraca dana funkcja. Skorzystaj z docstringów wewnątrz kodu oraz dokumentacji (tu będzie link). Nie bój się z nami kontaktować - nie ma głupich pytań, są tylko głupie filmiki w internecie!
+Możesz skopiować wzór pluginu z pomocą komendy `plugin gen [nazwa gniazda] [nazwa pluginu]`. Znajdziesz w nim zestaw wzorów funkcji, które wymagane są od danego pluginu. Type hinting podpowie Ci, co dany plugin przyjmuje, a co zwraca dana funkcja. Skorzystaj z docstringów wewnątrz kodu oraz [dokumentacji](https://www.notion.so/szymanski/c162be5ad2a042da816a04bb1d704bf8?v=9725078b87e940ab93a5c9950b455d4d). Nie bój się z nami kontaktować - nie ma głupich pytań, są tylko głupie filmiki w internecie!
 
 ### Dołącz do drzewnej drużyny
 
