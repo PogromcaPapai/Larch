@@ -1,5 +1,4 @@
 from __future__ import annotations
-from abc import abstractclassmethod
 
 import typing as tp
 import json, random
@@ -31,10 +30,7 @@ class ProofElement(object):
         self.sentence = sentence
         self.branch = branch
         self.closed = None
-        if history is None:
-            self.history = History()
-        else:    
-            self.history = history
+        self.history = History() if history is None else history
         self.editable = True
         self.layer = layer
 
@@ -94,10 +90,7 @@ class ProofNode(ProofElement, NodeMixin):
         :type children: tp.Iterable[ProofNode], optional
         """
         super().__init__(sentence=sentence, branch=branch_name, layer=layer, history=history)
-        if parent:
-            self.parent=parent
-        else:
-            self.parent=None
+        self.parent = parent or None
         self.children = children
     
 
@@ -133,10 +126,7 @@ class ProofNode(ProofElement, NodeMixin):
             closer = ''
         else:
             children = None
-            if self.closed:
-                closer = self.closed[0]
-            else:
-                closer = None
+            closer = self.closed[0] if self.closed else None
         return PrintedProofNode(sentences=self.sentence, children=children, closer=closer)
 
 

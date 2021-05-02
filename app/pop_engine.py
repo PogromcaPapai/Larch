@@ -178,7 +178,7 @@ class Socket(object):
         if module:
             self.cache.move_to_end((self.name, plugin_name))
         else:
-            module = self._extracted_from__import_7(plugin_name)
+            module = self._only_import(plugin_name)
         return module
 
     def _only_import(self, plugin_name):

@@ -59,9 +59,9 @@ def parser(statement: str, commands: dict) -> list[Command]:
         # Function parsing
         command = command_raw.strip()
         func = None
-        for comm, f in commands.items():
-            if command.startswith(comm):
-                name, func = comm, f
+        for comm_, f in commands.items():
+            if command.startswith(comm_):
+                name, func = comm_, f
                 break
         if not func:
             raise ParsingError("Command not found")
@@ -69,11 +69,7 @@ def parser(statement: str, commands: dict) -> list[Command]:
 
         # Invoking the help command
         if '?' in args or '--help' in args or 'help' in args:
-            if func['comm'].__doc__:
-                doc = "\n".join(
-                    (f"Help for '{name}':", func['summary'], func['comm'].__doc__))
-            else:
-                doc = func['summary']
+            doc = func['comm'].__doc__ or "Help not found"
             comm.append(Command(func['comm'], None, doc))
             continue
 
@@ -345,7 +341,7 @@ def do_next(session: engine.Session):
 def do_get_rules(session):
     """Returns all of the rules that can be used in this proof system"""
     try:
-        return "\n".join((" - ".join(i) for i in session.getrules().items()))
+        return "\n\n".join(("\n---\n".join(i) for i in session.getrules().items()))
     except engine.EngineError as e:
         return str(e)
 
@@ -384,9 +380,6 @@ def do_help(session) -> str:
 
 
 command_dict['?'] = {'comm': do_help, 'args': []}
-
-for func in command_dict.values():
-    func['summary'] = help(func['comm'])
 
 # Front-end setup
 

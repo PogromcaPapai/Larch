@@ -4,8 +4,9 @@ from importlib import import_module
 import os
 import sys
 
-sys.path.append('../app/')
-from UserInterface import cmd
+sys.path.append('../app')
+import engine
+from UserInterface import CLI as cmd
 
 class TestParser(test.TestCase):
 

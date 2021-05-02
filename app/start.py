@@ -27,7 +27,7 @@ if __name__ == "__main__":
         while exit_code == -1:
 
             # App run
-            with open('config.json', 'r') as file:
+            with open('config/config.json', 'r') as file:
                 config = json.load(file)
             UI.plug(config['chosen_plugins']['UserInterface'])
             exit_code = UI().run()
