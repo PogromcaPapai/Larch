@@ -46,17 +46,17 @@ def write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> list[str]:
     return [
         f"{pre}{node.name}".rstrip('\n')
         for pre, _, node in RenderTree(
-            get_nodes(tree.sentences, lexem_parser, tree.children)[0]
+            get_nodes(tree.sentence, lexem_parser, tree.children)[0]
         )
     ]
 
 
-def get_nodes(sentences: list[str], lexem_parser: callable, children: list[utils.PrintedTree]) -> list[Node]: 
+def get_nodes(sentence: list[str], lexem_parser: callable, children: list[utils.PrintedTree]) -> list[Node]: 
     """Zwraca listę dzieci do dodania do drzewa.
-    Jeżeli istnieją jeszcze zdania w sentences, to mają one pierwszeństwo. W innym przypadku wyliczane są dzieci.
+    Jeżeli istnieją jeszcze zdania w sentence, to mają one pierwszeństwo. W innym przypadku wyliczane są dzieci.
 
-    :param sentences: PrintedTree.sentences
-    :type sentences: list[str]
+    :param sentence: PrintedTree.sentence
+    :type sentence: list[str]
     :param lexem_parser: Transformuje tokeny w leksemy
     :type lexem_parser: callable
     :param children: PrintedTree.children
@@ -64,9 +64,5 @@ def get_nodes(sentences: list[str], lexem_parser: callable, children: list[utils
     :return: Lista dzieci do dodania do węzła
     :rtype: list[Node]
     """
-    if sentences:
-        return [Node(get_readable(sentences[0], lexem_parser), children=get_nodes(sentences[1:], lexem_parser, children))]
-    elif children:
-        return sum((get_nodes(child.sentences, lexem_parser, child.children) for child in children), [])
-    else:
-        return []
+    ch = sum((get_nodes(child.sentence, lexem_parser, child.children) for child in children), []) if children else []
+    return [Node(get_readable(sentence, lexem_parser), children=ch)]

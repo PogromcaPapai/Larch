@@ -9,7 +9,7 @@ from tree_helpers import *
 from close import *
 
 Sentence = tp.NewType("Sentence", list[str])
-PrintedProofNode = namedtuple('PrintedProofNode', ('sentences', 'children', 'closer'))
+PrintedProofNode = namedtuple('PrintedProofNode', ('sentence', 'children', 'closer'))
 
 def getcolors():
     """
@@ -131,7 +131,7 @@ class ProofNode(ProofElement, NodeMixin):
         else:
             children = None
             closer = self.closed[0] if self.closed else None
-        return PrintedProofNode(sentences=self.sentence, children=children, closer=closer)
+        return PrintedProofNode(sentence=self.sentence, children=children, closer=closer)
 
 
     def getleaves(self, *names: tp.Iterable[str]) -> list[ProofNode]:
