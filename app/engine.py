@@ -442,12 +442,12 @@ class Session(object):
             else:
                 self.branch = changed.branch
         else:
-            changed = self.proof.leaves.get(new.capitalize(), None)
+            changed = self.proof.getleaves(new.capitalize())
             if not changed:
                 raise EngineError(
                     f"Branch '{new}' doesn't exist in this proof")
             else:
-                self.branch = changed.branch
+                self.branch = changed[0].branch
 
     
     def proof_finished(self) -> tuple[bool, bool]:
