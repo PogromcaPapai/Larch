@@ -63,33 +63,7 @@ def Modifier(func):
 @Modifier
 def reduce_brackets(sentence: Sentence) -> Sentence:
     """Minimalizuje nawiasy w zdaniu"""
-    assert isinstance(sentence, Sentence)
-
-    if sentence == []:
-        return []
-
-    reduced = sentence[:]
-
-    # Deleting brackets
-    while reduced[0] == '(' and reduced[-1] == ')':
-        reduced = reduced[1:-1]
-
-    # Check bracket
-    opened_left = 0
-    opened_right = 0
-    min_left = 0
-    for i in reduced:
-        if i == '(':
-            opened_left += 1
-        elif i == ')':
-            opened_right += 1
-        else:
-            continue
-        delta_left = opened_left-opened_right
-        min_left = min(min_left, delta_left)
-
-    right = opened_left-opened_right-min_left
-    return -min_left*["("] + reduced + right*[")"]
+    return sentence.reduceBrackets()
 
 
 @Modifier
@@ -249,30 +223,16 @@ def strip_around(sentence: Sentence, border_type: str, split: bool, precedence: 
     """
     if not sentence:
         return None
-    lvl = 0
-    middle = None
-    precedence_keys = precedence.keys()
-    border_precedence = precedence.get(border_type, 0)
-    for i, s in enumerate(sentence):
-        if s == '(':
-            lvl += 1
-        elif s == ')':
-            lvl -= 1
-        elif lvl == 0 and (toktype := s.split('_')[0]) in precedence_keys:
-            if border_precedence > precedence[toktype]:
-                return None
-            elif border_precedence == precedence[toktype]:
-                if toktype == border_type:
-                    middle = i
-                else:
-                    middle = None
 
-    if middle is None:
+    middle, subsents = sentence.getMainConnective(precedence)
+    if middle.split('_')[0] != border_type:
         return None
-    elif split:
-        return ((sentence[:middle],), (sentence[middle+1:],))
+    
+    left, right = subsents
+    if split:
+        return ((left,), (right,))
     else:
-        return ((sentence[:middle], sentence[middle+1:]),)
+        return ((left, right),)
 
 
 # Modifiers
@@ -280,8 +240,7 @@ def strip_around(sentence: Sentence, border_type: str, split: bool, precedence: 
 
 @cleaned
 @Modifier
-# TODO: Needs optimalization
-def reduce_prefix(sentence: Sentence, prefix_type: str, prefixes: tuple[str]) -> Sentence:
+def reduce_prefix(sentence: Sentence, prefix_type: str, precedence: dict[str, int]) -> Sentence:
     """Usuwa prefiksy ze zdań
 
     :param sentence: Zdanie
@@ -294,28 +253,15 @@ def reduce_prefix(sentence: Sentence, prefix_type: str, prefixes: tuple[str]) ->
     :return: Zdanie
     :rtype: Sentence
     """
-
-    assert isinstance(sentence, Sentence)
-
-    if sentence[0].startswith(prefix_type):
-        start = 1
-        while any((sentence[start].startswith(i) for i in prefixes)):
-            start += 1
-        sentence_no_prefix = sentence[start:]
-
-        if len(sentence_no_prefix) == 1:
-            return reduce_brackets(sentence[1:])
-        else:
-            reduction = reduce_brackets(sentence_no_prefix)
-            if reduction.count("(") == sentence_no_prefix.count("("):
-                return None
-            elif reduction.count("(") < sentence_no_prefix.count("("):
-                return reduce_brackets(sentence[1:])
-            else:
-                raise Exception(
-                    "After bracket reduction the sentence_no_prefix gained a bracket")
-    else:
+    if not sentence:
         return None
+
+    middle, subsents = sentence.getMainConnective(precedence)
+    if middle.split('_')[0] != prefix_type:
+        return None
+    
+    _, right = subsents
+    return right
 
 
 @Modifier

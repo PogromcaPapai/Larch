@@ -19,7 +19,7 @@ PRECEDENCE = {
 }
 
 def red_neg(x):
-    return utils.reduce_prefix(x, 'not', ('not'))
+    return utils.reduce_prefix(x, 'not', PRECEDENCE)
 
 RULES = {
     'true and': utils.Rule(
@@ -70,7 +70,7 @@ RULES = {
         symbolic="~~A / A",
         docs="Usuwanie podwójnej negacji. Wymaga wskazania zdania w gałęzi.",
         func=lambda x: utils.reduce_prefix(
-            utils.reduce_prefix(utils.empty_creator(x), 'not', ('not')), 'not', ('not')),
+            utils.reduce_prefix(utils.empty_creator(x), 'not', PRECEDENCE), 'not', PRECEDENCE),
         context = None,
         reusable=True
     )

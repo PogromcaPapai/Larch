@@ -10,6 +10,12 @@ class SentenceError(Exception):
 def _operate_on_keys(dictionary: dict, op: callable) -> dict:
     return {op(i):j for i, j in dictionary.items()}
 
+def _split_keys(dictionary: dict, key: int) -> dict:
+    return (
+        {i:j for i, j in dictionary.items() if i < key},        # left
+        {i-key-1:j for i, j in dictionary.items() if i > key}   # right
+    )
+
 class Sentence(list):
 
     def __init__(self, sen, session: Session, precedenceBaked: Union[dict[str, float], None] = None):
@@ -81,7 +87,15 @@ class Sentence(list):
         return Sentence(-min_left*["("] + reduced + right*[")"], self.S, new_baked)
 
 
-    def readPrecedence(self, precedence: dict[str, int]) -> dict[str, float]:
+    def readPrecedence(self, precedence: dict[str, int]) -> dict[int, float]:
+        """
+        Oblicza, bądź zwraca informacje o sile spójników w danym zdaniu
+
+        :param precedence: Siła wiązania spójników (podane same typy) - im wyższa wartość, tym mocniej wiąże
+        :type precedence: dict[str, int]
+        :return: Indeksy spójników oraz siła wiązania - im wyższa wartość, tym mocniej wiąże
+        :rtype: dict[str, float]
+        """
         if self._precedenceBaked:
             return self._precedenceBaked
         self._precedenceBaked = {}
@@ -99,15 +113,30 @@ class Sentence(list):
         return self._precedenceBaked
 
 
-    def getMainConnective(self, precedence: dict[str, int]):
+    def _split(self, index: int):
+        """
+        Dzieli zdanie na dwa na podstawie podanego indeksu.
+        """
+        p_left, p_right = _split_keys(self._precedenceBaked, index)
+        left = Sentence(self[:index], self.S, p_left) if self[:index] else None
+        right = Sentence(self[index+1:], self.S, p_right) if self[index+1:] else None
+        return left, right
+
+
+    def getMainConnective(self, precedence: dict[str, int]) -> tuple[str, tuple[_Sentence, _Sentence]]:
+        """
+        Na podstawie kolejności wykonywania działań wyznacza najwyżej położony spójnik.
+
+        :param precedence: Siła wiązania spójników (podane same typy) - im wyższa wartość, tym mocniej wiąże
+        :type precedence: dict[str, int]
+        :return: Główny spójnik oraz powstałe zdania; None jeśli dane zdanie nie istnieje
+        :rtype: tuple[str, tuple[_Sentence, _Sentence]]
+        """
         sentence = self.reduceBrackets()
         prec = sentence.readPrecedence(precedence)
 
         con_index, _ = min(prec.items(), key=lambda x: x[1])
-        left = sentence[:con_index]
-        right = sentence[con_index+1:]
-
-        return sentence[con_index], (left, right)
+        return sentence[con_index], sentence._split(con_index)
                 
 
     # Overwriting list methods
