@@ -209,12 +209,14 @@ class Session(object):
                 statement, self.acc('FormalSystem').get_used_types(), self.defined)
         except self.acc('Lexicon').utils.CompilerError as e:
             raise EngineError(str(e))
+        tokenized = Sentence(tokenized, self)
         problem = self.acc('FormalSystem').check_syntax(tokenized)
         if problem:
             logger.warning(f"{statement} is not a valid statement \n{problem}")
             raise EngineError(f"Syntax error: {problem}")
         else:
-            tokenized = Sentence(self.acc('FormalSystem').prepare_for_proving(tokenized))
+            tokenized = self.acc('FormalSystem').prepare_for_proving(tokenized)
+            
             self.proof = ProofNode(tokenized, 'Green')
             self.branch = 'Green'
 
@@ -247,11 +249,10 @@ class Session(object):
         out = self.acc('FormalSystem').check_closure(branch, used)
 
         if out:
-            # TODO: USUNĄĆ KODY
-            code, printed, info = out
+            closure, info = out
             EngineLog(
-                f"Closing {branch_name}: {code=}, {info=}")
-            self.proof.getleaves(branch_name)[0].close(printed, code)
+                f"Closing {branch_name}: {str(closure)}, {info=}")
+            self.proof.getleaves(branch_name)[0].close(closure)
             return f"{branch_name}: {info}"
         else:
             return None
@@ -270,7 +271,6 @@ class Session(object):
         return self.acc('FormalSystem').get_needed_context(rule)
 
 
-    # TODO: użycie obiektu Sentence wewnątrz
     @EngineLog
     @DealWithPOP
     def use_rule(self, rule: str, context: dict[str, tp.Any], auto: bool = False) -> tp.Union[None, tuple[str]]:
@@ -314,16 +314,9 @@ class Session(object):
         old = self._get_node()
         self._get_node().append(out)
         children = old.children
-
-            #TODO: poprawić, aby wszystkie dzieci otrzymywały historię
-        if not children:
-            assert len(used_extention)==1, "Wrong used_extention length"
-            self._get_node().History(used_extention[0])
-            return (old.name,)
-        else:
-            for j, s in zip(children, used_extention):
-                j.History(*s)
-            return tuple(i.branch for i in children)
+        for j, s in zip(children, used_extention):
+            j.History(*s)
+        return tuple(i.branch for i in children)
 
 
     @DealWithPOP
@@ -397,7 +390,7 @@ class Session(object):
             raise EngineError(
                 "There is no proof started")
 
-        return self.getbranchnames()
+        return self.proof.getbranchnames()
 
 
     @DealWithPOP
@@ -443,18 +436,18 @@ class Session(object):
 
         new = new.upper()
         if new in ('LEFT', 'RIGHT'):
-            changed = self._get_node().getbranch_neighbour(new)
+            changed = self._get_node().getneighbour(new)
             if changed is None:
                 raise EngineError(f"There is no branch on the {new.lower()}")
             else:
-                self.branch = changed.name
+                self.branch = changed.branch
         else:
             changed = self.proof.leaves.get(new.capitalize(), None)
             if not changed:
                 raise EngineError(
                     f"Branch '{new}' doesn't exist in this proof")
             else:
-                self.branch = changed.name
+                self.branch = changed.branch
 
     
     def proof_finished(self) -> tuple[bool, bool]:

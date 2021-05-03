@@ -129,7 +129,7 @@ def get_used_types() -> tuple[str]:
     return USED_TYPES
 
 
-def use_rule(name: str, branch: list[utils.Sentence], used: utils.History, context: dict[str, tp.Any], auto: bool = False) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
+def use_rule(name: str, branch: list[utils.Sentence], used: utils.History, context: dict[str, tp.Any], auto: bool = False) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], tp.Union[tuple[tuple[tp.Union[int, callable, utils.Sentence]]], None]]:
     """
     Używa określonej reguły na podanej gałęzi.
     Więcej: https://www.notion.so/szymanski/Gniazda-w-Larchu-637a500c36304ee28d3abe11297bfdb2#98e96d34d3c54077834bc0384020ff38
@@ -155,18 +155,18 @@ def use_rule(name: str, branch: list[utils.Sentence], used: utils.History, conte
     statement_ID = context['sentenceID']
 
     # Sentence getting
-    if statement_ID < 0 or statement_ID > len(branch):
-            raise utils.FormalSystemError("No such sentence")
+    if statement_ID < 0 or statement_ID > len(branch)-1:
+        raise utils.FormalSystemError("No such sentence")
 
     tokenized_statement = branch[statement_ID]
 
-    if not rule.reusable and tuple(tokenized_statement) in used: # Used sentence filtering
+    if not rule.reusable and tokenized_statement in used: # Used sentence filtering
         raise utils.FormalSystemError("This sentence was already used in a non-reusable rule")
 
     # Rule usage
     fin = rule.func(tokenized_statement)
     if fin:
-        return fin, len(fin)*([[0]] if rule.reusable else [[tuple(tokenized_statement)]])
+        return fin, len(fin)*([[0]] if rule.reusable else [[tokenized_statement]])
     else:
         return None, None
 

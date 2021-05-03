@@ -391,7 +391,7 @@ def check_closure(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Uni
 
 def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
     """Sprawdza poprawność zapisu tokenizowanego zdania, zwraca informacje o błędach w formule"""
-    return True
+    return None
 
 
 def get_rules() -> dict[str, str]:
@@ -414,7 +414,7 @@ def get_used_types() -> tuple[str]:
     return USED_TYPES
 
 
-def use_rule(name: str, branch: list[utils.Sentence], used: utils.History, context: dict[str, tp.Any], auto: bool) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], int]:
+def use_rule(name: str, branch: list[utils.Sentence], used: utils.History, context: dict[str, tp.Any], auto: bool) -> tuple[tp.Union[tuple[tuple[utils.Sentence]], None], tp.Union[tuple[tuple[tp.Union[int, callable, utils.Sentence]]], None]]:
     """
     Używa określonej reguły na podanej gałęzi.
     Więcej: https://www.notion.so/szymanski/Gniazda-w-Larchu-637a500c36304ee28d3abe11297bfdb2#98e96d34d3c54077834bc0384020ff38
@@ -499,6 +499,6 @@ def use_rule(name: str, branch: list[utils.Sentence], used: utils.History, conte
         # History length multiplication
         if not history:
             history = [[0]]*len(left)
-        return merge_tupstruct(left, right, "turnstile_=>"), history
+        return utils.merge_tupstruct(left, right, "turnstile_=>"), history
     else:
         return None, None

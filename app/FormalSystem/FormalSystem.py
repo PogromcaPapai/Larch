@@ -2,8 +2,7 @@ from collections import namedtuple
 import typing as tp
 import close
 from tree_helpers import History
-
-Sentence = tp.NewType("Sentence", list[str])
+from sentence import Sentence
 
 Rule = namedtuple('Rule', ('symbolic', 'docs', 'func', 'context', 'reusable'))
 
@@ -17,12 +16,23 @@ class FormalSystemError(Exception):
 
 # Rule decorators
 
+def transform_to_sentences(converted, session):
+    """Konwertuje struktury krotek z listami stringów do struktur krotek ze zdaniami, inne obiekty pozostawia niezmienione"""
+    if isinstance(converted, tuple):
+        return tuple(transform_to_sentences(i, session) for i in converted)
+    elif isinstance(converted, list): 
+        return Sentence(converted, session)
+    else:
+        return converted  
+
 def Creator(func):
     """Funkcje z tym dekoratorem mogą tworzyć nowe struktury krotek"""
     def wrapper(sentence, *args, **kwargs):
         assert not isinstance(
             sentence, tuple), "Tuple structure already exists"
-        return func(sentence, *args, **kwargs)
+        assert isinstance(sentence, Sentence)
+        result = func(sentence[:], *args, **kwargs)
+        return transform_to_sentences(result, sentence.S)
     return wrapper
 
 
@@ -37,8 +47,11 @@ def Modifier(func):
                 return tuple(calculated)
         elif sentence is None:
             return None
+        elif isinstance(sentence, Sentence):
+            result = func(sentence[:], *args, **kwargs)
+            return transform_to_sentences(result, sentence.S)
         else:
-            return func(sentence[:], *args, **kwargs)
+            raise TypeError("Modifier is not a sentence nor a tuple")
 
     return wrapper
 
@@ -48,7 +61,7 @@ def Modifier(func):
 @Modifier
 def reduce_brackets(sentence: Sentence) -> Sentence:
     """Minimalizuje nawiasy w zdaniu"""
-    assert isinstance(sentence, list)
+    assert isinstance(sentence, Sentence)
 
     if sentence == []:
         return []
@@ -89,6 +102,7 @@ def cleaned(func):
         returned = reduce_brackets(returned)
         if returned:
             assert quick_bracket_check(returned)
+            assert Modifier(isinstance)(returned, Sentence)
         return returned
     return wrapper
 
@@ -134,12 +148,12 @@ def merge_tupstruct(left: tuple[tuple[str]], right: tuple[tuple[str]], glue: str
         assert len(left) == len(right), "Tuples not of equal length"
         end = [merge_tupstruct(l, r, glue) for l, r in zip(left, right)]
         return tuple(end)
-    elif isinstance(left, list) and isinstance(right, list):
+    elif isinstance(left, Sentence) and isinstance(right, Sentence):
         return left + [glue] + right
     else:
         # Bug reporting
-        l_correct = isinstance(left, (list, tuple))
-        r_correct = isinstance(right, (list, tuple))
+        l_correct = isinstance(left, (Sentence, tuple))
+        r_correct = isinstance(right, (Sentence, tuple))
         if l_correct and r_correct:
             raise AssertionError("Tuples not of equal depth")
         else:
@@ -279,7 +293,7 @@ def reduce_prefix(sentence: Sentence, prefix_type: str, prefixes: tuple[str]) ->
     :rtype: Sentence
     """
 
-    assert isinstance(sentence, list)
+    assert isinstance(sentence, Sentence)
 
     if sentence[0].startswith(prefix_type):
         start = 1
@@ -360,7 +374,7 @@ def on_part(sentence: Sentence, split_type: str, sent_num: int, func: callable):
     else:
         out = func(sentence[start_split+(split_count!=0):end_split])
 
-    if isinstance(out, list):
+    if isinstance(out, Sentence):
         return sentence[:start_split+(split_count!=0)] + out + sentence[end_split:]
     elif isinstance(out, tuple):
         l = []

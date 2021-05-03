@@ -315,7 +315,7 @@ def check_closure(branch: list[utils.Sentence], used: set[tuple[str]]) -> tp.Uni
 
 def check_syntax(tokenized_statement: utils.Sentence) -> tp.Union[str, None]:
     """Sprawdza poprawność zapisu tokenizowanego zdania, zwraca informacje o błędach w formule"""
-    return True
+    return None
 
 
 def get_rules() -> dict[str, str]:

@@ -408,7 +408,7 @@ def get_rprompt(session):
 
     # Adding branch closing symbol
     if closed:
-        s = closed[1]
+        s = str(closed)
         spaces = max_len-len(s)+int(log10(i+1))+3
         to_show.append(s+spaces*" ")
 
@@ -438,7 +438,6 @@ class Autocomplete(ptk.completion.Completer):
         super().__init__(*args, **kwargs)
 
     def get_completions(self, document, complete_event):
-        # sourcery skip: remove-pass-elif
         full = document.text
         last = document.get_word_before_cursor()
         if not any((full.startswith(com) for com in command_dict.keys())):
@@ -459,8 +458,6 @@ class Autocomplete(ptk.completion.Completer):
                     yield ptk.completion.Completion(i, start_position=-len(last))
             except engine.EngineError:
                 return
-        elif full.startswith('prove '):
-            pass
 
 # run
 

@@ -147,7 +147,7 @@ class ProofNode(ProofElement, NodeMixin):
         return [i for i in self.getleaves() if not i.closed]
 
 
-    def getnode_neighbour(self, left_right: str) -> ProofNode:
+    def getneighbour(self, left_right: str) -> ProofNode:
         """Zwraca prawego, lub lewego sąsiada danego węzła. 
         Równie dobrze można używać `anytree.util.rightsibling(self)` oraz `anytree.util.leftsibling(self)`
 
@@ -159,13 +159,10 @@ class ProofNode(ProofElement, NodeMixin):
         """
         if not self.parent:
             return None
-
-        # Find neighbour's index
-        index = self.parent.getchildren().index(self)
         if left_right.upper() in ('R', 'RIGHT'):
-            util.rightsibling(self)
+            return util.rightsibling(self)
         elif left_right.upper() in ('L', 'LEFT'):
-            util.leftsibling(self)
+            return util.leftsibling(self)
         else:
             raise ProofNodeError(f"'{left_right}' is not a valid direction")
 

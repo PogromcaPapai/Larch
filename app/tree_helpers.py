@@ -1,7 +1,5 @@
 from typing import Any, Union, NewType, Iterable
-
-Sentence = NewType("Sentence", list[str])
-
+from sentence import Sentence
 def _f():
     pass
 
@@ -26,7 +24,7 @@ class History(set):
         else:
             raise TypeError("History can only store sentences")
 
-    def __call__(self, *coms: tuple[Union[Sentence, int, callable]]) -> None:
+    def __call__(self, *coms: tuple[Union[list, Sentence, int, callable]]) -> None:
         """ Używane do manipulacji historią
 
             Możliwe argumenty:
@@ -39,8 +37,10 @@ class History(set):
             :raises TypeError: Typ nie jest obsługiwany 
         """
         for num, command in enumerate(coms):
-            if isinstance(command, list):
+            if isinstance(command, Sentence):
                 self.add_sentence(command)
+            elif isinstance(command, list):
+                self.add_sentence(Sentence(command))
             elif isinstance(command, function):
                 self = History(command(self))
             elif isinstance(command, int):
