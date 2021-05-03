@@ -24,7 +24,7 @@ def get_readable(sentence: utils.Sentence, lexem_parser: callable) -> str:
     :return: Przekonwertowane zdanie
     :rtype: str
     """
-    assert isinstance(sentence, list)
+    assert isinstance(sentence, utils.Sentence)
     return "<"+"> <".join(sentence)+">"
 
 def write_tree(tree: utils.PrintedTree, lexem_parser: callable) -> list[str]:

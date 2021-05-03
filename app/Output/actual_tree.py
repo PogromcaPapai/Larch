@@ -22,7 +22,7 @@ def get_readable(sentence: utils.Sentence, lexem_parser: callable) -> str:
     :return: Przepisane zdanie
     :rtype: str
     """
-    assert isinstance(sentence, list)
+    assert isinstance(sentence, utils.Sentence)
     readable = []
     for lexem in (lexem_parser(i) for i in sentence):
         if len(lexem) > 1:
