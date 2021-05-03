@@ -16,8 +16,13 @@ import prompt_toolkit as ptk
 SOCKET = 'UserInterface'
 VERSION = '0.0.1'
 
-with open('colors.json') as f:
-    colors = json.load(f)
+def getcolors():
+    """
+    Zwraca słownik kolorów wraz z ich kodami RGB
+    """
+    with open('colors.json') as f:
+        c = json.load(f)
+    return c
 
 # Logging config
 
@@ -383,7 +388,7 @@ command_dict['?'] = {'comm': do_help, 'args': []}
 
 # Front-end setup
 
-def get_rprompt(session):
+def get_rprompt(session, colors):
     """
     Generuje podgląd gałęzi po prawej
     """
@@ -474,7 +479,7 @@ def run() -> int:
     ptk.print_formatted_text(ptk.HTML(
         '<b>Logika -> Psychika</b>\nType ? to get command list; type [command]? to get help'))
     console = ptk.PromptSession(message=lambda: f"{session.branch+bool(session.branch)*' '}# ", rprompt=lambda: get_rprompt(
-        session), complete_in_thread=True, complete_while_typing=True, completer=Autocomplete(session))
+        session, getcolors()), complete_in_thread=True, complete_while_typing=True, completer=Autocomplete(session))
     while True:
         command = console.prompt()
         logger.info(f"Got a command: {command}")

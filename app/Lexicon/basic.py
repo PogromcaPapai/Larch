@@ -7,7 +7,7 @@ from string import ascii_letters as alphabet
 from functools import lru_cache
 import re
 from functools import reduce
-import Lexicon as utils
+import Lexicon.__utils__ as utils
 
 SOCKET = 'Lexicon'
 VERSION = '0.0.1'

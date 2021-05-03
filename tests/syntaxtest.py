@@ -3,8 +3,8 @@ from importlib import import_module
 import os
 import sys
 
-sys.path.append('../app/Lexicon')
-import basic
+sys.path.append('../app')
+from Lexicon import basic
 
 basic.TESTING = True
 

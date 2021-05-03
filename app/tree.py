@@ -8,12 +8,16 @@ from anytree import NodeMixin, util, LevelOrderIter
 from tree_helpers import *
 from close import *
 
-with open('colors.json') as f:
-    colors = list(json.load(f).keys())
-
 Sentence = tp.NewType("Sentence", list[str])
 PrintedProofNode = namedtuple('PrintedProofNode', ('sentences', 'children', 'closer'))
 
+def getcolors():
+    """
+    Zwraca słownik kolorów wraz z ich kodami RGB
+    """
+    with open('colors.json') as f:
+        c = json.load(f)
+    return c
 
 class ProofNodeError(Exception):
     def __init__(self, msg: str, *args, **kwargs):
@@ -71,7 +75,7 @@ class ProofElement(object):
 class ProofNode(ProofElement, NodeMixin):
     """Reprezentacja pojedynczego zdania w drzewie"""
     namegen = random.Random()
-
+    colors = getcolors()
 
     def __init__(self, sentence: Sentence, branch_name: str, layer: int = 0, history: History = None, parent: ProofNode = None, children: tp.Iterable[ProofNode] = []):
         """Reprezentacja pojedynczego zdania w drzewie
@@ -97,7 +101,7 @@ class ProofNode(ProofElement, NodeMixin):
     def gen_name(self, am=2) -> tuple[str]:
         """Zwraca `am` nazw dla gałęzi z czego jedną jest nazwa aktualnej"""
         branch_names = self.getbranchnames()
-        possible = [i for i in colors if not i in branch_names]
+        possible = [i for i in self.colors if not i in branch_names]
         if len(possible)<am-1:
             if len(self.leaves) == 1000:
                 raise ProofNodeError("No names exist")

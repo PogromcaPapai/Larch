@@ -128,7 +128,7 @@ class Socket(object):
             for file in os.listdir(self.dir)
             if file.endswith(".py")
             and file
-            not in {f"{self.template}.py", f"{self.name}.py", "__init__.py"}
+            not in {f"{self.template}.py", "__utils__.py", "__init__.py"}
         ]
 
     def unplug(self) -> None:

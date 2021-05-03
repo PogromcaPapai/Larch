@@ -30,6 +30,8 @@ def Creator(func):
     def wrapper(sentence, *args, **kwargs):
         assert not isinstance(
             sentence, tuple), "Tuple structure already exists"
+        if sentence is None:
+            return None
         assert isinstance(sentence, Sentence)
         result = func(sentence[:], *args, **kwargs)
         return transform_to_sentences(result, sentence.S)
@@ -331,9 +333,9 @@ def add_prefix(sentence: Sentence, prefix: str, lexem: str) -> Sentence:
     """
 
     if len(sentence) == 1:
-        return [f"{prefix}_{lexem}", *sentence]
+        return Sentence([f"{prefix}_{lexem}", *sentence], sentence.S)
     else:
-        return [f"{prefix}_{lexem}", '(', *sentence, ')']
+        return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S)
 
 
 @Modifier

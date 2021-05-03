@@ -2,7 +2,7 @@
 Tutaj umieść dokumentację swojego pluginu
 """
 import typing as tp
-import Lexicon as utils
+import Lexicon.__utils__ as utils
 
 SOCKET = 'Lexicon'
 VERSION = '0.0.1'

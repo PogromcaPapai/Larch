@@ -5,7 +5,7 @@ Autorzy:
     Michał Gajdziszewski - autor skryptu wzorcowego
     Jakub Dakowski (@PogromcaPapai) - autor implementacji
 """
-import Output as utils
+import Output.__utils__ as utils
 from anytree import Node, RenderTree
 
 SOCKET = 'Output'

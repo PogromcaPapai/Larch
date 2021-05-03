@@ -7,7 +7,7 @@ Autorzy:
     Jakub Dakowski (@PogromcaPapai) - autor implementacji
 """
 import typing as tp
-import Output as utils
+import Output.__utils__ as utils
 from anytree import Node
 
 SOCKET = 'Output'

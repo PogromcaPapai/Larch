@@ -2,7 +2,7 @@
 Tutaj umieść dokumentację swojego pluginu
 """
 import typing as tp
-import FormalSystem as utils
+import FormalSystem.__utils__ as utils
 
 SOCKET = 'FormalSystem'
 VERSION = '0.0.1'

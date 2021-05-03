@@ -2,7 +2,7 @@
 Tutaj umieść dokumentację swojego pluginu
 """
 import typing as tp
-import Auto as utils
+import Auto.__utils__ as utils
 
 SOCKET = 'Auto'
 VERSION = '0.0.1'

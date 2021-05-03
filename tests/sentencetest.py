@@ -1,7 +1,7 @@
 import unittest
 import sys
 
-sys.path.append('app')
+sys.path.append('../app')
 from sentence import Sentence
 
 class TestgetMainConnective(unittest.TestCase):
