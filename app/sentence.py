@@ -7,26 +7,17 @@ Session = NewType('Session', object)
 class SentenceError(Exception):
     pass
 
+def _operate_on_keys(dictionary: dict, op: callable) -> dict:
+    return {op(i):j for i, j in dictionary.items()}
 
 class Sentence(list):
 
-    def __init__(self, sen, session: Session):
-        self.connectSession(session)
+    def __init__(self, sen, session: Session, precedenceBaked: Union[dict[str, float], None] = None):
+        self.S = session
+        self._precedenceBaked = precedenceBaked
         super().__init__(sen)
 
     # The actual definitions
-
-    def connectSession(self, session: Session):
-        """Łączy zdanie z obiektem sesji, który może być potem używany do przywoływania odpowiednich operatorów
-
-        :param session: sesja do podłączenia
-        :type session: engine.Session
-        """
-        if type(session).__name__ != 'Session':
-            raise SentenceError(
-                f"Obiekt jest typu {type(session).__name__}, zamiast Session")
-        self.S = session
-        return self
 
     def getTypes(self) -> list[str]:
         """Zwraca listę kolejno występujących typów w zdaniu"""
@@ -39,33 +30,6 @@ class Sentence(list):
     def getReadable(self) -> str:
         return self.S.acc('Output').get_readable(self, self.S.acc('Lexicon').get_lexem)
 
-    def normalizeVars(self):
-        """
-        Przepisuje zdanie do formy o znormalizowanej kolejności stałych i zmiennych.
-
-        :return: Przekształcone zdanie
-        :rtype: Sentence
-        """
-        assert self.S, "Nie podpięto sesji"
-        av_letters = {i: self.S.acc('Lexicon').sign_list(i) for i in set(
-            self.getTypes()) & {'indvar', 'constant', 'predicate', 'function', 'sentvar'}}
-        translator = {}
-        buffor = Sentence().connectSession(self.S)
-
-        for typ, lex in zip(self.getTypes(), self):
-            if typ in ('indvar', 'constant', 'predicate', 'function', 'sentvar'):
-                added = translator.get(lex)
-
-                if added is None:
-                    added = f"{typ}_{av_letters[typ].pop(0)}"
-                buffor.append(added)
-            else:
-                buffor.append(lex)
-
-        return buffor
-
-    # TODO:  standaryzacja symetryczności operacji
-
     def getUnique(self) -> list[str]:
         """Zwraca zapis unikalny dla tego zdania; odporne na różnice w formacie zapisu"""
         ret = []
@@ -75,6 +39,76 @@ class Sentence(list):
             else:
                 ret.append(typ)
         return ret
+
+
+    # Manipulacja zdaniem
+
+
+    def reduceBrackets(self) -> _Sentence:
+        """Minimalizuje nawiasy w zdaniu; zakłada poprawność ich rozmieszczenia"""
+
+        if len(self)<2:
+            return self[:]
+
+        reduced = self[:]
+
+        # Deleting brackets
+        while reduced[0] == '(' and reduced[-1] == ')':
+            reduced = reduced[1:-1]
+        
+        diff = (len(self)-len(reduced))/2
+
+        # Fill missing brackets
+        opened_left = 0
+        opened_right = 0
+        min_left = 0
+        for i in reduced:
+            if i == '(':
+                opened_left += 1
+            elif i == ')':
+                opened_right += 1
+            else:
+                continue
+            delta_left = opened_left-opened_right
+            min_left = min(min_left, delta_left)
+
+        if self._precedenceBaked:
+            new_baked = _operate_on_keys(self._precedenceBaked, lambda x: x-(diff+min_left))
+        else:
+            new_baked = None
+
+        right = opened_left-opened_right-min_left
+        return Sentence(-min_left*["("] + reduced + right*[")"], self.S, new_baked)
+
+
+    def readPrecedence(self, precedence: dict[str, int]) -> dict[str, float]:
+        if self._precedenceBaked:
+            return self._precedenceBaked
+        self._precedenceBaked = {}
+
+        lvl = 0
+        prec_div = max(precedence.values())+1
+        for i, t in enumerate(self.getTypes()):
+            if t == '(':
+                lvl += 1
+            elif t == ')':
+                lvl -= 1
+            elif t in precedence:
+                self._precedenceBaked[i] = lvl + precedence[t]/prec_div
+    
+        return self._precedenceBaked
+
+
+    def getMainConnective(self, precedence: dict[str, int]):
+        sentence = self.reduceBrackets()
+        prec = sentence.readPrecedence(precedence)
+
+        con_index, _ = min(prec.items(), key=lambda x: x[1])
+        left = sentence[:con_index]
+        right = sentence[con_index+1:]
+
+        return sentence[con_index], (left, right)
+                
 
     # Overwriting list methods
 
@@ -94,7 +128,7 @@ class Sentence(list):
         return Sentence(super().__mul__(n), self.S)
 
     def copy(self) -> _Sentence:
-        return Sentence(super().copy(), self.S)
+        return Sentence(super().copy(), self.S, self._precedenceBaked)
 
     def __repr__(self) -> str:
         return " ".join(self)

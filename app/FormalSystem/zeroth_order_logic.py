@@ -15,6 +15,7 @@ PRECEDENCE = {
     'and':3,
     'or':3,
     'imp':2,
+    'not':4
 }
 
 def red_neg(x):
