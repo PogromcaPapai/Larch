@@ -243,14 +243,13 @@ def strip_around(sentence: Sentence, border_type: str, split: bool, precedence: 
 def reduce_prefix(sentence: Sentence, prefix_type: str, precedence: dict[str, int]) -> Sentence:
     """Usuwa prefiksy ze zdań
 
-    :param sentence: Zdanie
+    :param sentence: zdanie do modyfikacji
     :type sentence: Sentence
-    :param prefix_type: Typ zdania
+    :param prefix_type: typ prefiksu do usunięcia
     :type prefix_type: str
-    :param prefixes: prefiksy występujące w systemie
-    :type prefixes: tuple[str]
-    :raises Exception: [description]
-    :return: Zdanie
+    :param precedence: Kolejność wykonywania działań
+    :type precedence: dict[str, int]
+    :return: Nowe zdanie
     :rtype: Sentence
     """
     if not sentence:
@@ -279,9 +278,9 @@ def add_prefix(sentence: Sentence, prefix: str, lexem: str) -> Sentence:
     """
 
     if len(sentence) == 1:
-        return Sentence([f"{prefix}_{lexem}", *sentence], sentence.S)
+        return Sentence([f"{prefix}_{lexem}", *sentence], sentence.S, {i+1:j for i,j in sentence.precedenceBaked.values()})
     else:
-        return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S)
+        return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S, {i+2:j for i,j in sentence.precedenceBaked.values()})
 
 
 @Modifier

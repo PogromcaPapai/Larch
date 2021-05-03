@@ -20,7 +20,7 @@ class Sentence(list):
 
     def __init__(self, sen, session: Session, precedenceBaked: Union[dict[str, float], None] = None):
         self.S = session
-        self._precedenceBaked = precedenceBaked
+        self.precedenceBaked = precedenceBaked
         super().__init__(sen)
 
     # The actual definitions
@@ -78,10 +78,10 @@ class Sentence(list):
             delta_left = opened_left-opened_right
             min_left = min(min_left, delta_left)
 
-        if self._precedenceBaked:
-            new_baked = _operate_on_keys(self._precedenceBaked, lambda x: x-(diff+min_left))
+        if self.precedenceBaked:
+            new_baked = _operate_on_keys(self.precedenceBaked, lambda x: x-(diff+min_left))
         else:
-            new_baked = None
+            new_baked = {}
 
         right = opened_left-opened_right-min_left
         return Sentence(-min_left*["("] + reduced + right*[")"], self.S, new_baked)
@@ -89,16 +89,16 @@ class Sentence(list):
 
     def readPrecedence(self, precedence: dict[str, int]) -> dict[int, float]:
         """
-        Oblicza, bądź zwraca informacje o sile spójników w danym zdaniu
+        Oblicza, bądź zwraca informacje o sile spójników w danym zdaniu. *Powinno być przywołane przed dowolnym użyciem precedenceBaked*
 
         :param precedence: Siła wiązania spójników (podane same typy) - im wyższa wartość, tym mocniej wiąże
         :type precedence: dict[str, int]
         :return: Indeksy spójników oraz siła wiązania - im wyższa wartość, tym mocniej wiąże
         :rtype: dict[str, float]
         """
-        if self._precedenceBaked:
-            return self._precedenceBaked
-        self._precedenceBaked = {}
+        if self.precedenceBaked:
+            return self.precedenceBaked
+        self.precedenceBaked = {}
 
         lvl = 0
         prec_div = max(precedence.values())+1
@@ -108,16 +108,16 @@ class Sentence(list):
             elif t == ')':
                 lvl -= 1
             elif t in precedence:
-                self._precedenceBaked[i] = lvl + precedence[t]/prec_div
+                self.precedenceBaked[i] = lvl + precedence[t]/prec_div
     
-        return self._precedenceBaked
+        return self.precedenceBaked
 
 
     def _split(self, index: int):
         """
         Dzieli zdanie na dwa na podstawie podanego indeksu.
         """
-        p_left, p_right = _split_keys(self._precedenceBaked, index)
+        p_left, p_right = _split_keys(self.precedenceBaked, index)
         left = Sentence(self[:index], self.S, p_left) if self[:index] else None
         right = Sentence(self[index+1:], self.S, p_right) if self[index+1:] else None
         return left, right
@@ -157,7 +157,7 @@ class Sentence(list):
         return Sentence(super().__mul__(n), self.S)
 
     def copy(self) -> _Sentence:
-        return Sentence(super().copy(), self.S, self._precedenceBaked)
+        return Sentence(super().copy(), self.S, self.precedenceBaked)
 
     def __repr__(self) -> str:
         return " ".join(self)
