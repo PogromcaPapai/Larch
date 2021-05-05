@@ -278,9 +278,11 @@ def add_prefix(sentence: Sentence, prefix: str, lexem: str) -> Sentence:
     """
 
     if len(sentence) == 1:
-        return Sentence([f"{prefix}_{lexem}", *sentence], sentence.S, {i+1:j for i,j in sentence.precedenceBaked.values()})
+        return Sentence([f"{prefix}_{lexem}", *sentence], sentence.S)
     else:
-        return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S, {i+2:j for i,j in sentence.precedenceBaked.values()})
+        return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S, {i+2:j+1 for i,j in sentence.precedenceBaked.values()})
+        # TODO: dodawanie 1. spójknika z odpowiednią wartością
+        # return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S, {i+2:j+1 for i,j in sentence.precedenceBaked.values()} | {0:sentence.calcPrecedenceVal(prefix, )})
 
 
 @Modifier
