@@ -481,9 +481,9 @@ def run() -> int:
     console = ptk.PromptSession(message=lambda: f"{session.branch+bool(session.branch)*' '}# ", rprompt=lambda: get_rprompt(
         session, getcolors()), complete_in_thread=True, complete_while_typing=True, completer=Autocomplete(session))
     while True:
-        command = console.prompt()
+        command = console.prompt().strip()
         logger.info(f"Got a command: {command}")
-        if command in (' '*n for n in range(100)):
+        if command == '':
             logger.debug("Command empty")
             continue
         try:
@@ -499,3 +499,22 @@ def run() -> int:
 
         for procedure in to_perform:
             ptk.print_formatted_text(performer(procedure, session))
+
+
+class Runner(object):
+    def __init__(self) -> None:
+        super().__init__()
+        self.session = engine.Session('main', 'config.json')
+
+    def __call__(self, command: str) -> str:
+        try:
+            procedure = parser(command, command_dict)[0]
+        except ParsingError as e:
+            return e
+        except TypeError as e:
+            return "błąd: złe argumenty"
+        return performer(procedure, self.session)
+
+runner = Runner()
+runner('')
+runner.session.getrules()

@@ -49,6 +49,12 @@ class Sentence(list):
 
     # Manipulacja zdaniem
 
+    @staticmethod
+    def calcPrecedenceVal(connective: str, precedence: dict[str,int], lvl: int = 0, prec_div: int = None) -> float:
+        if prec_div is not None:
+            return lvl + precedence[connective]/prec_div
+        else:
+            return lvl + precedence[connective]/max(precedence.values())+1
 
     def reduceBrackets(self) -> _Sentence:
         """Minimalizuje nawiasy w zdaniu; zakłada poprawność ich rozmieszczenia"""
@@ -108,7 +114,7 @@ class Sentence(list):
             elif t == ')':
                 lvl -= 1
             elif t in precedence:
-                self.precedenceBaked[i] = lvl + precedence[t]/prec_div
+                self.precedenceBaked[i] = self.calcPrecedenceVal(t, precedence, lvl, prec_div)
     
         return self.precedenceBaked
 
