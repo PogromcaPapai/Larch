@@ -79,6 +79,7 @@ Jeśli chcesz się zaangażować, możesz skontaktować się z dowolnym z autor�
 - Jakub Dakowski (@PogromcaPapai) - :crown: Benevolent dictator for life :crown:
 - Barbura Adamska - Chief Bzdury Officer :chart_with_upwards_trend:
 - Robert Szymański (@rsxxi) - PM/UX unicorn :unicorn:
+- Ola Draszewska (@nerdolo) - Confused coder :space_invader:
 
 Oraz wszyscy, którzy bacznie przyglądali się rozwojowi aplikacji.
 
