@@ -8,6 +8,11 @@ SOCKET = 'FormalSystem'
 VERSION = '0.0.1'
 
 
+def get_operator_precedence() -> dict[str, int]:
+    """Zwraca siłę wiązania danych spójników, im wyższa, tym mocniej wiąże (negacja ma najwyższą przykładowo)"""
+    pass
+
+
 def prepare_for_proving(statement: utils.Sentence) -> utils.Sentence:
     """Przygotowuje zdanie do dowodzenia - czyszczenie, dodawanie elementów"""
     pass

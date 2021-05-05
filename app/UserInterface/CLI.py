@@ -514,7 +514,3 @@ class Runner(object):
         except TypeError as e:
             return "błąd: złe argumenty"
         return performer(procedure, self.session)
-
-runner = Runner()
-runner('')
-runner.session.getrules()

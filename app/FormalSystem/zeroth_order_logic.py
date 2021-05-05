@@ -175,3 +175,7 @@ def use_rule(name: str, branch: list[utils.Sentence], used: utils.History, conte
 def get_needed_context(rule_name: str) -> tuple[utils.ContextDef]:
     """Zwraca informacje o wymaganym przez daną regułę kontekście w formie obiektów ContextDef"""
     return tuple([utils.ContextDef(variable='sentenceID', official='Sentence Number', docs='The number of the sentence in this branch', type_='sentenceID')])
+    
+def get_operator_precedence() -> dict[str, int]:
+    """Zwraca siłę wiązania danych spójników, im wyższa, tym mocniej wiąże (negacja ma najwyższą przykładowo)"""
+    return PRECEDENCE

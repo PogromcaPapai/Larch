@@ -276,13 +276,10 @@ def add_prefix(sentence: Sentence, prefix: str, lexem: str) -> Sentence:
     :return: Zmieniony prefiks
     :rtype: Sentence
     """
-
     if len(sentence) == 1:
         return Sentence([f"{prefix}_{lexem}", *sentence], sentence.S)
-    else:
-        return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S, {i+2:j+1 for i,j in sentence.precedenceBaked.values()})
-        # TODO: dodawanie 1. spójknika z odpowiednią wartością
-        # return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S, {i+2:j+1 for i,j in sentence.precedenceBaked.values()} | {0:sentence.calcPrecedenceVal(prefix, )})
+    new_record = {0:sentence.calcPrecedenceVal(prefix)}
+    return Sentence([f"{prefix}_{lexem}", '(', *sentence, ')'], sentence.S, {i+2:j+1 for i,j in sentence.precedenceBaked.values()} | new_record)
 
 
 @Modifier
