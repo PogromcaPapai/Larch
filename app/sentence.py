@@ -142,6 +142,7 @@ class Sentence(list):
     def getMainConnective(self, precedence: dict[str, int]) -> tuple[str, tuple[_Sentence, _Sentence]]:
         """
         Na podstawie kolejności wykonywania działań wyznacza najwyżej położony spójnik.
+        Zwraca None gdy nie udało się znaleźć spójnika
 
         :param precedence: Siła wiązania spójników (podane same typy) - im wyższa wartość, tym mocniej wiąże
         :type precedence: dict[str, int]
@@ -149,8 +150,10 @@ class Sentence(list):
         :rtype: tuple[str, tuple[_Sentence, _Sentence]]
         """
         sentence = self.reduceBrackets()
-        prec = sentence.readPrecedence(precedence)
+        prec = sentence.readPrecedence()
 
+        if len(prec)==0:
+            return None, None
         con_index, _ = min(prec.items(), key=lambda x: x[1])
         return sentence[con_index], sentence._split(con_index)
                 
